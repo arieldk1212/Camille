@@ -1,2 +1,2 @@
 # Camille
-C++ HTTP Framework - built for simplicity and user-friendly experience, makes C++ development process smoother!
+C++ Web Framework - built for simplicity and user-friendly experience, makes C++ development process smoother!
