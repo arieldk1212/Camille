@@ -12,6 +12,7 @@ Checks: 'cppcoreguidelines-*,
  -misc-non-private-member-variables-in-classes,
  -readability-braces-around-statements,
  -google-readability-braces-around-statements,
+ -google-readability-todo,
  -cppcoreguidelines-avoid-magic-numbers,
  -readability-magic-numbers,
  -readability-magic-numbers,
@@ -22,11 +23,11 @@ Checks: 'cppcoreguidelines-*,
  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
  -readability-named-parameter,
  -cert-env33-c
+ -cppcoreguidelines-special-member-functions(AllowSoleDefaultDtor)
   '
 
 
 WarningsAsErrors: ''
-# HeaderFilterRegex: '*spdlog/[^f].*'
 FormatStyle:     none
 
 CheckOptions:    
@@ -50,3 +51,6 @@ CheckOptions:
     value:           llvm
   - key:             modernize-use-nullptr.NullMacros
     value:           'NULL'
+  - key:             cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value:           'true'
+
