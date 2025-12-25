@@ -42,3 +42,5 @@
 
 # Project Relation
 build
+cmake-build-debug
+.idea
