@@ -68,7 +68,7 @@ class SocketStream : public Stream {
   }
 
   ssize_t Write(const char* ptr) { return Write(ptr, strlen(ptr)); }
-  ssize_t write(const std::string& s) { return Write(s.data(), s.size()); }
+  ssize_t write(const std::string& msg) { return Write(msg.data(), msg.size()); }
 
   [[nodiscard]] socket_types::Error GetError() const override { return error_; };
 
@@ -96,7 +96,7 @@ class SocketStream : public Stream {
       return -1;
     }
 
-    size_t total_written = 0;
+    ssize_t total_written = 0;
     while (total_written < size) {
 #ifdef _WIN32
       auto ret = send(sock_, ptr + total_written, static_cast<int>(size - total_written), 0);
@@ -107,9 +107,9 @@ class SocketStream : public Stream {
         error_ = socket_types::Error::Write;
         return -1;
       }
-      total_written += static_cast<size_t>(ret);
+      total_written += ret;
     }
-    return static_cast<ssize_t>(total_written);
+    return total_written;
   }
 
   void GetRemoteIpAndPort(std::string& ip_address, int port) const override {
@@ -154,6 +154,8 @@ class SocketStream : public Stream {
   std::chrono::seconds read_timeout_{socket_types::READ_TIMEOUT};
   std::chrono::seconds write_timeout_{socket_types::WRITE_TIMEOUT};
 };
+
+class WebsocketStream : public Stream {};
 
 }  // namespace camille
 
