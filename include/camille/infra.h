@@ -12,6 +12,7 @@ namespace infra {
 
 enum class Methods : std::uint8_t { GET, HEAD, POST, PATCH, PUT, DELETE, OPTIONS, CONNECT, TRACE };
 enum class LogLevels : std::uint8_t { DEBUG, INFO, WARNING, ERROR, CRITICAL };
+enum class NetworkError : std::uint8_t { Timeout, ConnectionReset, QuotaExceeded };
 
 namespace types {
 

@@ -18,8 +18,8 @@ class Stream {
   [[nodiscard]] virtual bool WaitReadable(std::chrono::milliseconds timeout) const = 0;
   [[nodiscard]] virtual bool WaitWriteable(std::chrono::milliseconds timeout) const = 0;
 
-  virtual ssize_t Read(char* ptr, size_t size) = 0;
-  virtual ssize_t Write(const char* ptr, size_t size) = 0;
+  virtual ssize_t Read(std::byte* ptr, size_t size) = 0;
+  virtual ssize_t Write(std::byte* ptr, size_t size) = 0;
 
   [[nodiscard]] virtual socket_t Socket() const = 0;
   [[nodiscard]] virtual socket_types::Error GetError() const = 0;
@@ -35,7 +35,11 @@ class SocketStream : public Stream {
         read_timeout_(timeouts.read_timeout),
         write_timeout_(timeouts.write_timeout) {}
 
-  ~SocketStream() override = default;
+  ~SocketStream() override {
+    if (sock_ != kInvalidSocket) {
+      socket_types::CloseSocket(sock_);
+    }
+  }
 
   SocketStream(const SocketStream&) = delete;
   SocketStream& operator=(const SocketStream&) = delete;
@@ -67,12 +71,11 @@ class SocketStream : public Stream {
     return socket_types::WaitUntilSocketReady(sock_, timeout, false, true);
   }
 
-  ssize_t Write(const char* ptr) { return Write(ptr, strlen(ptr)); }
-  ssize_t write(const std::string& msg) { return Write(msg.data(), msg.size()); }
+  ssize_t Write(std::byte* ptr) { return Write(ptr, strlen(reinterpret_cast<const char*>(ptr))); }
 
   [[nodiscard]] socket_types::Error GetError() const override { return error_; };
 
-  ssize_t Read(char* ptr, size_t size) override {
+  ssize_t Read(std::byte* ptr, size_t size) override {
     if (!WaitReadable(std::chrono::duration_cast<std::chrono::milliseconds>(read_timeout_))) {
       error_ = socket_types::Error::Read;
       return -1;
@@ -90,7 +93,7 @@ class SocketStream : public Stream {
     return ret;
   }
 
-  ssize_t Write(const char* ptr, size_t size) override {
+  ssize_t Write(std::byte* ptr, size_t size) override {
     if (!WaitWriteable(std::chrono::duration_cast<std::chrono::milliseconds>(write_timeout_))) {
       error_ = socket_types::Error::Write;
       return -1;

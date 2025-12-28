@@ -68,7 +68,7 @@ struct SocketOptions {
   bool tcp_nodelay = false;
   bool ipv6_v6only = false;
   bool reuse_addr = true;
-  bool reuse_port = false;
+  bool reuse_port = true;
   int recv_buffer_size = 0;
   int send_buffer_size = 0;
 };

@@ -249,7 +249,7 @@ class Client {
     return *this;
   }
 
-  socket_types::Error connect() {
+  socket_types::Error Connect() {
     sock_ = socket(AF_INET, SOCK_STREAM, 0);
     if (sock_ == kInvalidSocket) {
       return socket_types::Error::Connection;
@@ -286,7 +286,7 @@ class Client {
     }
   }
 
-  [[nodiscard]] bool is_connected() const { return sock_ != kInvalidSocket; }
+  [[nodiscard]] bool IsConnected() const { return sock_ != kInvalidSocket; }
 
  private:
   int port_;
