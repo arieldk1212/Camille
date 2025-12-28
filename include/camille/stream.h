@@ -9,6 +9,8 @@
 
 namespace camille {
 
+namespace stream {
+
 class Stream {
  public:
   virtual ~Stream() = default;
@@ -160,6 +162,7 @@ class SocketStream : public Stream {
 
 class WebsocketStream : public Stream {};
 
-}  // namespace camille
+};  // namespace stream
+};  // namespace camille
 
 #endif

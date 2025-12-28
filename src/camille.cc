@@ -3,8 +3,10 @@
 #include <memory>
 #include "camille/client.h"
 
+using Server = camille::client::Camille;
+
 int main() {
-  std::shared_ptr<camille::CamilleClient> client = std::make_shared<camille::CamilleClient>();
-  client->Run("0.0.0.0", 8085);
+  std::shared_ptr<Server> camille = std::make_shared<Server>();
+  camille->Run("0.0.0.0", 8085);
   return 0;
 }
