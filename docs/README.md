@@ -14,3 +14,8 @@ Camille's Web Framework is the first child, but as always i strive for more, the
 2. Camille ORM - ORM That's built right. No more to say.
 3. Camille Agenty - C++ LLM Agent Framework, Only for the C++ Community.
 4. Camille's Itch - I had an itch to create a DB Proxy for analytics.. no more extensions that are haradcoded in your database.
+
+## Inspirations
+
+1. cpp-httplib for simplicity and header-only style, crow, oat++.
+2. DHH for Ruby On Rails, all in one.

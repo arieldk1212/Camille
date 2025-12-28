@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.15)
+
+set(CAMILLE_VERSION 1.1.1)
+
+project(camille-framework LANGUAGES CXX VERSION ${CAMILLE_VERSION}
+)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_INCLUDE_CURRENT_DIR)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
+add_subdirectory(src)
