@@ -1,12 +1,10 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 #define CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 
-/**
- * @brief put here the headers, types, uri, status codes.
- */
-
 #include <unordered_map>
 #include <string>
+
+namespace camille {
 
 namespace infra {
 
@@ -72,5 +70,7 @@ class Url {};
 };  // namespace uri
 
 };  // namespace infra
+
+};  // namespace camille
 
 #endif

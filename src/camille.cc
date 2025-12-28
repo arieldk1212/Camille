@@ -1,9 +1,8 @@
 #include "camille/camille.h"
 
 #include <memory>
-#include "camille/client.h"
 
-using Server = camille::client::Camille;
+using Server = camille::Camille;
 
 int main() {
   std::shared_ptr<Server> camille = std::make_shared<Server>();

@@ -61,8 +61,9 @@ class BaseClient {
   virtual void Run(const std::string& base_client_ip, int base_client_port) = 0;
   virtual void AddMiddleware(const camille::middleware::BaseMiddleware& middleware) = 0;
 };
+};  // namespace client
 
-class Camille : public BaseClient {
+class Camille : public client::BaseClient {
  public:
   Camille() = default;
   ~Camille() override { server_->Stop(); }
@@ -72,6 +73,10 @@ class Camille : public BaseClient {
 
   Camille(Camille&&) = default;
   Camille& operator=(Camille&&) = default;
+
+  void SetDebug(bool debug) { debug_ = debug; };
+  void SetServerName(const std::string& server_name) { server_name_ = server_name; }
+  void SetServerVersion(const std::string& server_version) { server_version_ = server_version; }
 
   void Run(const std::string& client_ip, int client_port) override {
     server_.emplace(client_ip, client_port);
@@ -85,7 +90,7 @@ class Camille : public BaseClient {
           std::println("Client connected: {}:{}", remote_ip, remote_port);
 
           if (server_->IsRunning()) {
-            ProcessRequest(stream, *this->server_);
+            client::ProcessRequest(stream, *this->server_);
           } else {
             throw std::runtime_error("Server is not running.");
           }
@@ -103,10 +108,12 @@ class Camille : public BaseClient {
   }
 
  private:
+  bool debug_{false};
+  std::string server_name_;
+  std::string server_version_;
   std::optional<camille::server::Server> server_;
 };
 
-};  // namespace client
 };  // namespace camille
 
 #endif

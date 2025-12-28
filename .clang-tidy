@@ -22,8 +22,9 @@ Checks: 'cppcoreguidelines-*,
  -modernize-avoid-c-arrays,
  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
  -readability-named-parameter,
- -cert-env33-c
- -cppcoreguidelines-special-member-functions(AllowSoleDefaultDtor)
+ -cert-env33-c,
+ -cppcoreguidelines-special-member-functions(AllowSoleDefaultDtor),
+ -readability-redundant-access-specifiers
   '
 
 

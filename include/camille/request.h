@@ -7,6 +7,8 @@
 
 // TODO: implement: Zero-Copy Parsing
 
+namespace camille {
+
 namespace request {
 
 template <typename T>
@@ -24,5 +26,7 @@ class Request {
   infra::headers::RequestHeaders headers_;
 };
 
-}  // namespace request
+};  // namespace request
+};  // namespace camille
+
 #endif
