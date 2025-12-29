@@ -34,13 +34,12 @@ class Request {
   explicit Request(infra::Methods method);
   ~Request() = default;
 
-  bool AddHeader(const std::string& header_name, const std::string& header_value) {}
+  bool AddHeader(const std::string& header_name, const std::string& header_value);
 
  private:
-  bool has_auth_;
+  bool has_auth_{false};
   std::string body_;
   infra::Methods request_method_;
-  infra::StatusCodes status_code_;
   infra::headers::RequestHeaders headers_;
 };
 

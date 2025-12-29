@@ -7,11 +7,11 @@
 
 #include <string>
 
-#define DEBUG(obj, msg)                              \
-  do {                                               \
-    if (obj) &&((obj)->IsDebugEnabled) {             \
-        std::cout << "[DEBUG] " << msg << std::endl; \
-      }                                              \
+#define DEBUG(obj, msg)                     \
+  do {                                      \
+    if ((obj) && (obj)->IsDebugEnabled()) { \
+      std::println("[DEBUG] {}", msg);      \
+    }                                       \
   } while (0)
 
 // TODO: think about how to set the debug mode, maybe in
@@ -33,7 +33,11 @@ class BaseClient {
 class Camille : public client::BaseClient {
  public:
   Camille() = default;
-  ~Camille() override { server_->Stop(); }
+  ~Camille() override {
+    if (server_) {
+      server_->Stop();
+    }
+  }
 
   Camille(const Camille&) = delete;
   Camille& operator=(const Camille&) = delete;

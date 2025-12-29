@@ -19,4 +19,4 @@ Camille's Web Framework is the first child, but as always i strive for more, the
 
 1. cpp-httplib for simplicity and header-only style, oat++.
 2. DHH for Ruby On Rails, all in one.
-3. Fastapi for architecture, async, starlette, asgi!
+3. FastAPI for architecture, async, starlette, asgi.

@@ -11,7 +11,7 @@ namespace router {
 
 class Router {
  public:
-  Router(const std::string& prefix, std::optional<std::string>& tag);
+  Router(const std::string& prefix, const std::optional<std::string>& tag);
   ~Router() = default;
 
   void Head(const std::string& path, infra::StatusCodes status_code);
@@ -32,6 +32,8 @@ class Router {
   void ToMacro(const MethodType& method);
 
  private:
+  std::string prefix_;
+  std::optional<std::string> tag_;
   // std::shared_ptr<server::Client> server_;
 };
 

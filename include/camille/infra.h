@@ -10,9 +10,15 @@ namespace infra {
 
 enum class Methods : std::uint8_t { GET, HEAD, POST, PATCH, PUT, DELETE, OPTIONS, CONNECT, TRACE };
 enum class LogLevels : std::uint8_t { DEBUG, INFO, WARNING, ERROR, CRITICAL };
-enum class NetworkError : std::uint8_t { Timeout, ConnectionReset, QuotaExceeded };
-// TODO: need to fill the rest..
-enum class StatusCodes : std::uint8_t { HTTP_100, HTTP_200, HTTP_300, HTTP_400, HTTP_500 };
+enum class NetworkError : std::uint8_t { Timeout, RemoteClosed, ConnectionReset, QuotaExceeded };
+// TODO: need to fill the rest, change the name to the error itself
+enum class StatusCodes : std::uint16_t {
+  HTTP_100 = 100,
+  HTTP_200 = 200,
+  HTTP_300 = 300,
+  HTTP_400 = 400,
+  HTTP_500 = 500
+};
 
 namespace types {
 

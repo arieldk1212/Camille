@@ -7,8 +7,14 @@ using Router = camille::router::Router;
 
 int main() {
   std::shared_ptr<Server> camille = std::make_shared<Server>();
-  camille->SetDebug(true);
-  camille->Run("0.0.0.0", 8085);
+  camille->SetDebug(false);  // Verify: should debug be enabled?
+
+  try {
+    camille->Run("127.0.0.1", 8085);
+  } catch (const std::exception& e) {
+    std::println("Error: {}", e.what());
+    return 1;
+  }
 
   return 0;
 }
