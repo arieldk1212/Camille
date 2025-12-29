@@ -11,6 +11,8 @@ namespace infra {
 enum class Methods : std::uint8_t { GET, HEAD, POST, PATCH, PUT, DELETE, OPTIONS, CONNECT, TRACE };
 enum class LogLevels : std::uint8_t { DEBUG, INFO, WARNING, ERROR, CRITICAL };
 enum class NetworkError : std::uint8_t { Timeout, ConnectionReset, QuotaExceeded };
+// TODO: need to fill the rest..
+enum class StatusCodes : std::uint8_t { HTTP_100, HTTP_200, HTTP_300, HTTP_400, HTTP_500 };
 
 namespace types {
 
@@ -44,8 +46,8 @@ class RequestHeaders : public TypeHeaders {
   bool MatchToType() override;
 
  private:
-  std::string request_line_;
   Headers headers_;
+  std::string request_line_;
 };
 
 class ResponseHeaders : public TypeHeaders {
@@ -55,8 +57,8 @@ class ResponseHeaders : public TypeHeaders {
   bool MatchToType() override;
 
  private:
-  std::string response_line_;
   Headers headers_;
+  std::string response_line_;
 };
 
 };  // namespace headers

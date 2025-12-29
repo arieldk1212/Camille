@@ -3,6 +3,7 @@
 
 #include <mutex>
 
+// TODO: add timestamps.
 namespace logger {
 
 class Logging {
