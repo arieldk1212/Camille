@@ -3,5 +3,6 @@
 
 #include "client.h"
 #include "router.h"
+#include "request.h"
 
 #endif

@@ -28,18 +28,35 @@ namespace camille {
 
 namespace request {
 
-template <typename T>
+struct RequestData {
+  std::string accept;
+  std::string sec_gpc;
+  std::string user_agent;
+  std::string connection;
+  std::string http_version;
+  std::string cache_control;
+  std::string accept_language;
+  std::string accept_encoding;
+  std::string upgrade_insecure_requests;
+};
+
+// template <typename T>
 class Request {
  public:
-  explicit Request(infra::Methods method);
+  explicit Request();
   ~Request() = default;
 
   bool AddHeader(const std::string& header_name, const std::string& header_value);
 
  private:
-  bool has_auth_{false};
+  std::string path_;
+  std::string host_;
+  std::uint16_t port_;
   std::string body_;
-  infra::Methods request_method_;
+  size_t request_size_;
+  bool has_auth_{false};
+  infra::Methods method_;
+  RequestData request_data_;
   infra::headers::RequestHeaders headers_;
 };
 

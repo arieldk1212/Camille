@@ -25,14 +25,14 @@ class BaseClient {
   virtual ~BaseClient() = default;
 
   virtual void Run(const std::string& base_client_ip, int base_client_port) = 0;
-  virtual void AddMiddleware(const camille::middleware::BaseMiddleware& middleware) = 0;
-  virtual void AddRouter() = 0;
+  virtual void AddMiddleware(const middleware::BaseMiddleware& middleware) = 0;
+  virtual void AddRouter(const router::Router& router) = 0;
 };
 };  // namespace client
 
 class Camille : public client::BaseClient {
  public:
-  Camille() = default;
+  Camille() { InitRouters(); }
   ~Camille() override {
     if (server_) {
       server_->Stop();
@@ -55,17 +55,22 @@ class Camille : public client::BaseClient {
   void SetServerName(const std::string& server_name) { server_name_ = server_name; }
   void SetServerVersion(const std::string& server_version) { server_version_ = server_version; }
 
-  void AddMiddleware(const camille::middleware::BaseMiddleware& middleware) override {
+  void AddMiddleware(const middleware::BaseMiddleware& middleware) override {
     std::println("Middleware Added");
   }
-  void AddRouter() override {}
+  void AddRouter(const router::Router& router) override {}
 
   /**
    * @brief usage in the ctor, appending and reading all
    *  the necessary components of the routers
-   *
    */
-  constexpr void InitRouters();
+  constexpr void InitRouters() {
+    if (!routers_.empty()) {
+      for (const auto& router : routers_) {
+        // TODO: probably add to swagger here or something.
+      }
+    }
+  }
 
  private:
   bool debug_{false};

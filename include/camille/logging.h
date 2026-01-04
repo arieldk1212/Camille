@@ -6,6 +6,8 @@
 // TODO: add timestamps.
 namespace logger {
 
+enum class LogLevels : std::uint8_t { DEBUG, INFO, WARNING, ERROR, CRITICAL };
+
 class Logging {
  public:
  private:

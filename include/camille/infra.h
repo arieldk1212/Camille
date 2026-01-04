@@ -2,6 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 
 #include <unordered_map>
+#include <vector>
 #include <string>
 
 namespace camille {
@@ -9,8 +10,8 @@ namespace camille {
 namespace infra {
 
 enum class Methods : std::uint8_t { GET, HEAD, POST, PATCH, PUT, DELETE, OPTIONS, CONNECT, TRACE };
-enum class LogLevels : std::uint8_t { DEBUG, INFO, WARNING, ERROR, CRITICAL };
 enum class NetworkError : std::uint8_t { Timeout, RemoteClosed, ConnectionReset, QuotaExceeded };
+
 // TODO: need to fill the rest, change the name to the error itself
 enum class StatusCodes : std::uint16_t {
   HTTP_100 = 100,
@@ -23,6 +24,7 @@ enum class StatusCodes : std::uint16_t {
 namespace types {
 
 using Headers = std::unordered_map<std::string, std::string>;
+using ParserData = std::vector<std::tuple<std::string, std::string, std::string>>;
 
 };  // namespace types
 

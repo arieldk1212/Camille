@@ -18,6 +18,13 @@
 namespace camille {
 namespace intermediary {
 
+inline infra::types::ParserData ParseBuffer(std::string_view buffer) {
+  std::vector<std::string> helper;
+  infra::types::ParserData parsed_data;
+
+  return parsed_data;
+}
+
 inline std::expected<size_t, infra::NetworkError> SafeRead(
     std::unique_ptr<stream::SocketStream>& stream, std::vector<std::byte>& buffer) {
   auto result = stream->Read(buffer.data(), buffer.size());
@@ -55,6 +62,7 @@ inline void ProcessTransaction(std::unique_ptr<stream::SocketStream>& stream) {
 
   if (*bytes_read > 0) {
     std::string_view result{reinterpret_cast<const char*>(buffer.data()), *bytes_read};
+    auto parsed_data = ParseBuffer(result);
     std::println("Received {} bytes: \n{}", *bytes_read, result);
 
     if (stream->Write(buffer.data(), *bytes_read) < 0) {
