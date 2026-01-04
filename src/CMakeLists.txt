@@ -1,1 +1,1 @@
-add_executable(camille-framework camille.cc)
+add_executable(camille-server camille.cc)

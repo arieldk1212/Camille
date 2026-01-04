@@ -11,10 +11,12 @@
 
 namespace camille {
 
+namespace server {
+
 inline constexpr int kDefaultPort = 4354;
 inline constexpr int kDefaultBacklog = 128;
 
-using ConnectionHandler = std::function<void(std::unique_ptr<SocketStream>)>;
+using ConnectionHandler = std::function<void(std::unique_ptr<stream::SocketStream>)>;
 
 class Server {
  public:
@@ -140,7 +142,7 @@ class Server {
         continue;
       }
 
-      auto stream = std::make_unique<SocketStream>(client_sock, timeouts_);
+      auto stream = std::make_unique<stream::SocketStream>(client_sock, timeouts_);
       ProcessAndCloseSocket(std::move(stream));
     }
 
@@ -176,7 +178,7 @@ class Server {
     return sock;
   }
 
-  void ProcessAndCloseSocket(std::unique_ptr<SocketStream> stream) {
+  void ProcessAndCloseSocket(std::unique_ptr<stream::SocketStream> stream) {
     if (connection_handler_) {
       connection_handler_(std::move(stream));
     } else {
@@ -274,9 +276,9 @@ class Client {
     return socket_types::Error::Success;
   }
 
-  std::unique_ptr<SocketStream> Stream() {
+  std::unique_ptr<stream::SocketStream> Stream() {
     if (sock_ == kInvalidSocket) return nullptr;
-    return std::make_unique<SocketStream>(sock_, timeouts_);
+    return std::make_unique<stream::SocketStream>(sock_, timeouts_);
   }
 
   void Close() {
@@ -296,6 +298,7 @@ class Client {
   socket_types::SocketOptions socket_options_;
 };
 
+};  // namespace server
 }  // namespace camille
 
 #endif

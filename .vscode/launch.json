@@ -9,7 +9,7 @@
       "name": "Launch",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceRoot}/build/src/camille-framework",
+      "program": "${workspaceRoot}/build/src/camille-server",
       "args": [],
       "cwd": "${workspaceRoot}"
     }

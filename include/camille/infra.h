@@ -1,22 +1,30 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 #define CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 
-/**
- * @brief put here the headers, types, uri, status codes.
- */
-
 #include <unordered_map>
+#include <vector>
 #include <string>
+
+namespace camille {
 
 namespace infra {
 
 enum class Methods : std::uint8_t { GET, HEAD, POST, PATCH, PUT, DELETE, OPTIONS, CONNECT, TRACE };
-enum class LogLevels : std::uint8_t { DEBUG, INFO, WARNING, ERROR, CRITICAL };
-enum class NetworkError : std::uint8_t { Timeout, ConnectionReset, QuotaExceeded };
+enum class NetworkError : std::uint8_t { Timeout, RemoteClosed, ConnectionReset, QuotaExceeded };
+
+// TODO: need to fill the rest, change the name to the error itself
+enum class StatusCodes : std::uint16_t {
+  HTTP_100 = 100,
+  HTTP_200 = 200,
+  HTTP_300 = 300,
+  HTTP_400 = 400,
+  HTTP_500 = 500
+};
 
 namespace types {
 
 using Headers = std::unordered_map<std::string, std::string>;
+using ParserData = std::vector<std::tuple<std::string, std::string, std::string>>;
 
 };  // namespace types
 
@@ -46,8 +54,8 @@ class RequestHeaders : public TypeHeaders {
   bool MatchToType() override;
 
  private:
-  std::string request_line_;
   Headers headers_;
+  std::string request_line_;
 };
 
 class ResponseHeaders : public TypeHeaders {
@@ -57,8 +65,8 @@ class ResponseHeaders : public TypeHeaders {
   bool MatchToType() override;
 
  private:
-  std::string response_line_;
   Headers headers_;
+  std::string response_line_;
 };
 
 };  // namespace headers
@@ -72,5 +80,7 @@ class Url {};
 };  // namespace uri
 
 };  // namespace infra
+
+};  // namespace camille
 
 #endif

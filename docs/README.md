@@ -17,5 +17,14 @@ Camille's Web Framework is the first child, but as always i strive for more, the
 
 ## Inspirations
 
-1. cpp-httplib for simplicity and header-only style, crow, oat++.
+1. cpp-httplib for simplicity and header-only style, oat++.
 2. DHH for Ruby On Rails, all in one.
+3. FastAPI for architecture, async, starlette, asgi.
+
+## Deep Dive
+
+In order to create Camille, similar to modern async frameworks i had to use several libraries that are open sourced.
+Asio: Camille is built above the asio C++ framework.
+Json: nlohmann/json or something made by me.
+Router: By me using trie, regex, params (template metaprogramming)
+HTTP Parsing: By me.

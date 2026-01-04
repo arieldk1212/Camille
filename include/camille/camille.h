@@ -2,5 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_CAMILLE_H_
 
 #include "client.h"
+#include "router.h"
+#include "request.h"
 
 #endif
