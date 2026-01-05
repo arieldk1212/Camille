@@ -1,59 +1,6 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_REFACTOR_H_
 #define CAMILLE_INCLUDE_CAMILLE_REFACTOR_H_
 
-#include "asio/executor_work_guard.hpp"
-#include "asio/io_context.hpp"
-#include "asio/ip/tcp.hpp"
-
-#include <memory>
-#include <set>
-#include <string_view>
-
-/**
- * @todo implement a proxy for the middle ware layers.
- *
- */
-
-namespace camille {
-namespace refactor {
-
-using AsioExecutorType = asio::io_context::executor_type;
-using SharedAsioWorkGuards = std::shared_ptr<asio::executor_work_guard<AsioExecutorType>>;
-
-class Stream {
- public:
-  explicit Stream(size_t stream_pool_size)
-      : stream_pool_size(stream_pool_size) {}
-
-  void IoContextRun() {
-    /**
-     * @todo implement which runs via round robin or lru?
-     */
-  }
-
- private:
-  size_t stream_pool_size;
-  std::vector<asio::io_context> io_contexts_;
-  std::vector<SharedAsioWorkGuards> work_guards_;
-};
-
-class Server {
- public:
-  Server(std::string_view host, int port);
-
-  void AsyncAccept(const asio::io_context& context, std::function<void> handler);
-
- private:
-  int port_;
-  std::string_view host_;
-  std::atomic<bool> is_running_;
-  std::shared_ptr<Stream> stream_;
-  std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;
-};
-
-};  // namespace refactor
-};  // namespace camille
-
 #endif
 
 /**

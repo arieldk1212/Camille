@@ -3,9 +3,9 @@
 
 #include "middleware.h"
 #include "router.h"
-#include "intermediary.h"
 
 #include <string>
+#include <print>
 
 #define DEBUG(obj, msg)                     \
   do {                                      \
@@ -33,11 +33,7 @@ class BaseClient {
 class Camille : public client::BaseClient {
  public:
   Camille() { InitRouters(); }
-  ~Camille() override {
-    if (server_) {
-      server_->Stop();
-    }
-  }
+  ~Camille() override {}
 
   Camille(const Camille&) = delete;
   Camille& operator=(const Camille&) = delete;
@@ -45,9 +41,9 @@ class Camille : public client::BaseClient {
   Camille(Camille&&) = default;
   Camille& operator=(Camille&&) = default;
 
-  void Run(const std::string& client_ip, int client_port) override {
-    intermediary::Run(server_, client_ip, client_port);
-  }
+  // void Run(const std::string& client_ip, int client_port) override {
+  //   intermediary::Run(server_, client_ip, client_port);
+  // }
 
   bool IsDebugEnabled() const { return debug_; }
 
@@ -77,7 +73,6 @@ class Camille : public client::BaseClient {
   std::string server_name_;
   std::string server_version_;
   std::vector<router::Router> routers_;  // maybe some sort of tree? prefix tree?
-  std::optional<server::Server> server_;
 };
 
 };  // namespace camille
