@@ -1,8 +1,8 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_DATA_STRUCTURES_H_
 #define CAMILLE_INCLUDE_CAMILLE_DATA_STRUCTURES_H_
 
-#include <memory>
 #include <unordered_map>
+#include <list>
 
 namespace camille {
 namespace datastructure {
@@ -15,78 +15,94 @@ class DataStructure {
 template <typename KeyType, typename ValueType>
 class LruCache : public DataStructure {
  public:
-  class LruNode {
-   public:
-    LruNode() = default;
-    LruNode(KeyType key, ValueType value)
-        : key(key),
-          value(value) {}
-    ~LruNode() = default;
-
-    KeyType key{KeyType()};
-    ValueType value{ValueType()};
-    std::unique_ptr<LruNode> prev{nullptr};
-    std::unique_ptr<LruNode> next{nullptr};
-  };
-
-  using UniqueNode = std::unique_ptr<LruNode>;
+  using Items = std::list<std::pair<KeyType, ValueType>>;
+  using It = Items::iterator;
+  using Cache = std::unordered_map<KeyType, It>;
 
  public:
   explicit LruCache(size_t capacity)
-      : ds_capacity_(capacity),
-        head(std::make_unique<LruNode>()),
-        tail(std::make_unique<LruNode>()) {}
+      : capacity_(capacity) {}
+
+  void get(KeyType key, ValueType value) {
+    auto& it = cache_.at(key);
+    if (it == cache_.end()) {
+      return;
+    }
+    items_.splice(items_.begin(), items_, it->second->second);
+  }
+
+  void put(KeyType key, ValueType value) {
+    auto& it = cache_.at(key);
+    if (it != cache_.end()) {
+      items_.splice(items_.begin(), items_, it->second->second);
+      it->second->second = value;
+      return;
+    }
+    if (items_.size() == capacity_) {
+      int key_to_delete = items_.back().first;
+      items_.pop_back();
+      cache_.erase(key_to_delete);
+    }
+
+    items_.emplace_front(key, value);
+    cache_[key] = items_.begin();
+  }
 
  private:
-  void RemoveNode(UniqueNode node) {
-    node->next->prev = node->prev;
-    node->prev->next = node->next;
-  }
+  size_t capacity_;
+  Items items_;
+  Cache cache_;
+  //  public:
+  //   class LruNode {
+  //    public:
+  //     LruNode() = default;
+  //     LruNode(KeyType key, ValueType value)
+  //         : key(key),
+  //           value(value) {}
+  //     ~LruNode() = default;
 
-  void AddToHead(UniqueNode node) {
-    node->next = head->next;
-    node->prev = head;
-    head->prev->next = node;
-    head->next = node;
-  }
+  //     KeyType key{KeyType()};
+  //     ValueType value{ValueType()};
+  //     std::unique_ptr<LruNode> prev{nullptr};
+  //     std::unique_ptr<LruNode> next{nullptr};
+  //   };
 
-  UniqueNode RemoveTail() {
-    UniqueNode node = std::move(tail->prev);
-    RemoveNode(node);
-    return node;
-  }
+  //   using UniqueNode = std::unique_ptr<LruNode>;
 
- private:
-  size_t ds_size_{0};
-  size_t ds_capacity_;
-  std::unique_ptr<LruNode> head;
-  std::unique_ptr<LruNode> tail;
-  std::unordered_map<KeyType, UniqueNode> cache_;
+  //  public:
+  //   explicit LruCache(size_t capacity)
+  //       : ds_capacity_(capacity),
+  //         head(std::make_unique<LruNode>()),
+  //         tail(std::make_unique<LruNode>()) {}
+
+  //  private:
+  //   void RemoveNode(UniqueNode node) {
+  //     node->next->prev = node->prev;
+  //     node->prev->next = node->next;
+  //   }
+
+  //   void AddToHead(UniqueNode node) {
+  //     node->next = head->next;
+  //     node->prev = head;
+  //     head->prev->next = node;
+  //     head->next = node;
+  //   }
+
+  //   UniqueNode RemoveTail() {
+  //     UniqueNode node = std::move(tail->prev);
+  //     RemoveNode(node);
+  //     return node;
+  //   }
+
+  //  private:
+  //   size_t ds_size_{0};
+  //   size_t ds_capacity_;
+  //   std::unique_ptr<LruNode> head;
+  //   std::unique_ptr<LruNode> tail;
+  //   std::unordered_map<KeyType, UniqueNode> cache_;
 };
 
 };  // namespace datastructure
 };  // namespace camille
 
 #endif
-
-/**
-// A safer way to handle growing data
-std::vector<std::byte> dynamic_buffer;
-dynamic_buffer.reserve(4096); // Start with 4KB
-
-while (headers_not_complete) {
-    std::byte temp_chunk[1024];
-    auto result = stream->Read(temp_chunk, 1024);
-
-    // Append to our growing buffer
-    dynamic_buffer.insert(dynamic_buffer.end(), temp_chunk, temp_chunk + result);
-
-    // Security Check: Don't let the buffer grow to 1GB!
-    if (dynamic_buffer.size() > MAX_ALLOWED_HEADER_SIZE) {
-        throw std::runtime_error("Request Header Too Large");
-    }
-}
-
-
-
- */

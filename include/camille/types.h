@@ -2,6 +2,8 @@
 #define CAMILLE_INCLUDE_CAMILLE_TYPES_H_
 
 #include "asio/io_context.hpp"
+#include "asio/ip/tcp.hpp"
+#include "asio/streambuf.hpp"
 
 #include <memory>
 #include <unordered_map>
@@ -26,6 +28,13 @@ template <typename UniquePtrType>
 using CamilleUnique = std::shared_ptr<UniquePtrType>;
 
 /**
+ * @brief Camille Vector
+ * @tparam VectorType
+ */
+template <typename VectorType>
+using CamilleVector = std::vector<VectorType>;
+
+/**
  * @brief Headers data structure
  */
 using CamilleHeaders = std::unordered_map<std::string, std::string>;
@@ -40,14 +49,46 @@ using ParserData = std::vector<std::tuple<std::string, std::string, std::string>
 
 namespace aio {
 /**
- * @brief Asio Executor Type
+ * @brief Asio Io Context Executor Type
  */
 using AsioExecutorType = asio::io_context::executor_type;
 
 /**
- * @brief Shared ptr of Asio work guards
+ * @brief shared_ptr of Asio work guards
  */
 using SharedAsioWorkGuards = camille::CamilleShared<asio::executor_work_guard<AsioExecutorType>>;
+
+/**
+ * @brief Asio IO Context
+ */
+using AsioIOContext = asio::io_context;
+
+/**
+ * @brief Asio Socket
+ */
+using AsioIOSocket = asio::ip::tcp::socket;
+
+/**
+ * @brief Asio Acceptor
+ */
+using AsioIOAcceptor = asio::ip::tcp::acceptor;
+
+/**
+ * @brief Asio Stream Buffer
+ */
+using AsioIOStreamBuffer = asio::streambuf;
+
+/**
+ * @brief vector shared_ptr of Asio io context
+ */
+using SharedAsioIoContextVector =
+    camille::CamilleVector<camille::CamilleShared<aio::AsioIOContext>>;
+
+/**
+ * @brief vector shared_ptr of Asio io context
+ */
+using SharedAsioWorkGuardsVector = camille::CamilleVector<aio::SharedAsioWorkGuards>;
+
 };  // namespace aio
 
 };  // namespace types

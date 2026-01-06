@@ -1,25 +1,20 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_SERVER_H_
 #define CAMILLE_INCLUDE_CAMILLE_SERVER_H_
 
-#include "stream.h"
+#include "pool.h"
 
-#include "asio/ip/tcp.hpp"
+#include <string_view>
 
 namespace camille {
 namespace server {
 
 class Server {
  public:
-  Server(std::string_view host, int port);
-
-  void AsyncAccept(const asio::io_context& context, std::function<void> handler);
+  Server(std::string_view host, std::uint16_t port, concepts::SignedIntegral auto pool_siz) {}
 
  private:
-  int port_;
-  std::string_view host_;
-  std::atomic<bool> is_running_;
-  std::shared_ptr<stream::Stream> stream_;
-  std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;
+  pool::ContextPool io_context_pool_;
+  types::aio::AsioIOAcceptor acceptor_;
 };
 
 };  // namespace server

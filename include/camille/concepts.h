@@ -8,6 +8,13 @@
 namespace camille {
 namespace concepts {
 
+/**
+ * @brief For non-negetive positive integers.
+ * @tparam T
+ */
+template <typename T>
+concept SignedIntegral = std::is_integral_v<T> && std::is_signed_v<T>;
+
 template <typename T>
 concept IsRequest = requires(T r) {
   {r.path()}->std::convertible_to<std::string_view>;
