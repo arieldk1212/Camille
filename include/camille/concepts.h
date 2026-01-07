@@ -13,7 +13,7 @@ namespace concepts {
  * @tparam T
  */
 template <typename T>
-concept SignedIntegral = std::is_integral_v<T> && std::is_signed_v<T>;
+concept UnsignedIntegral = std::unsigned_integral<T>;
 
 template <typename T>
 concept IsRequest = requires(T r) {

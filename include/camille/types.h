@@ -2,6 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_TYPES_H_
 
 #include "asio/io_context.hpp"
+#include "asio/ip/address.hpp"
 #include "asio/ip/tcp.hpp"
 #include "asio/streambuf.hpp"
 
@@ -77,6 +78,11 @@ using AsioIOAcceptor = asio::ip::tcp::acceptor;
  * @brief Asio Stream Buffer
  */
 using AsioIOStreamBuffer = asio::streambuf;
+
+/**
+ * @brief Asio IP Address
+ */
+using AsioIOSAddress = asio::ip::address;
 
 /**
  * @brief vector shared_ptr of Asio io context
