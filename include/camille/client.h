@@ -3,18 +3,12 @@
 
 #include "middleware.h"
 #include "router.h"
+#include "logging.h"
 #include "server.h"
 
 #include <string>
 #include <print>
 #include <thread>
-
-#define DEBUG(obj, msg)                     \
-  do {                                      \
-    if ((obj) && (obj)->IsDebugEnabled()) { \
-      std::println("[DEBUG] {}", msg);      \
-    }                                       \
-  } while (0)
 
 // TODO: think about how to set the debug mode, maybe in
 // config file or something else, maybe not inside Camille?
@@ -50,7 +44,7 @@ class Camille : public client::BaseClient {
       server_ = std::make_unique<server::Server>(host_, port_, pool_size_);
     }
     server_->Run();
-    std::println("[CAMILLE] Listening at: http://{}:{}", host_, port_);
+    CAMILLE("Listening at: http://{}:{}", host_, port_);
   }
 
   [[nodiscard]] bool IsDebugEnabled() const { return debug_; }
@@ -61,7 +55,8 @@ class Camille : public client::BaseClient {
   void SetPoolSize(unsigned pool_size) { pool_size_ = pool_size; }
 
   void AddMiddleware(const middleware::BaseMiddleware& middleware) override {
-    std::println("Middleware Added");
+    auto name = middleware.GetMiddlewareName();
+    CAMILLE("Middleware Added {}", middleware.GetMiddlewareName());
   }
   void AddRouter(const router::Router& router) override {}
 

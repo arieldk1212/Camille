@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "concepts.h"
+#include "logging.h"
 
 #include <thread>
 
@@ -31,7 +32,7 @@ class ContextPool : public Pool {
   void Run() {
     for (const auto& ctx : io_contexts_) {
       threads_.emplace_back([&ctx]() { ctx->run(); });
-      std::println("[CAMILLE] BOOTING WORKER");
+      CAMILLE("BOOTING WORKER");
     }
   }
 

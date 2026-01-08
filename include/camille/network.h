@@ -1,7 +1,6 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
-#include "asio/completion_condition.hpp"
 #include "types.h"
 
 #include "asio/read_until.hpp"
@@ -12,18 +11,6 @@
 
 namespace camille {
 namespace network {
-
-class SessionRequest {
- public:
-  explicit SessionRequest(types::aio::AsioIOSocket&& socket)
-      : socket_(std::move(socket)) {
-    std::println("Session Request created");
-  }
-
- private:
-  types::aio::AsioIOSocket socket_;
-  types::aio::AsioIOStreamBuffer stream_buffer_;
-};
 
 class Session : public std::enable_shared_from_this<Session> {
   /**
