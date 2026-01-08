@@ -42,6 +42,17 @@ class ContextPool : public Pool {
     }
   }
 
+  void Wait() {
+    /**
+     * @brief Blocks the main thread, runs "before" the log "listening at" is executed
+     */
+    for (auto& thread : threads_) {
+      if (thread.joinable()) {
+        thread.join();
+      }
+    }
+  }
+
   void Stop() {
     work_guards_.clear();
     for (const auto& ctx : io_contexts_) {

@@ -1,7 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
-#include "camille/types.h"
+#include "types.h"
 #include "infra.h"
 
 #include <string>

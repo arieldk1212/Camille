@@ -1,6 +1,8 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
+#include "asio/buffers_iterator.hpp"
+#include "asio/error.hpp"
 #include "types.h"
 #include "logging.h"
 
@@ -19,41 +21,53 @@ class Session : public std::enable_shared_from_this<Session> {
    * @brief check out boost implementation for server.
    */
  public:
-  explicit Session(types::aio::AsioIOSocket socket)
-      : socket_(types::camille::CamilleShared<types::aio::AsioIOSocket>(&socket)) {}
+  explicit Session(types::camille::CamilleShared<types::aio::AsioIOSocket> socket)
+      : socket_(std::move(socket)) {}
 
   void Start() { DoRead(); }
 
  private:
+  struct ReadHandler {
+    types::camille::CamilleShared<Session> self;
+    void operator()(const std::error_code& error_code, std::size_t bytes) const {
+      if (!error_code) {
+        auto buffer = self->stream_buffer_.data();
+        std::string data(
+            asio::buffers_begin(buffer),
+            std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
+        std::println("Data: {}", data);
+
+        self->stream_buffer_.consume(bytes);
+        self->DoWrite(bytes);
+      } else if (error_code == asio::error::eof) {
+        CAMILLE_ERROR("Session ended: Client disconnected");
+      }
+    }
+  };
+
+  struct WriteHandler {
+    types::camille::CamilleShared<Session> self;
+    std::size_t to_consume;
+    void operator()(const std::error_code& error_code, std::size_t) const {
+      if (!error_code) {
+        self->stream_buffer_.consume(to_consume);
+        self->DoRead();
+      } else if (error_code == asio::error::eof || error_code == asio::error::connection_reset ||
+                 error_code == asio::error::broken_pipe) {
+        CAMILLE_DEBUG("Session ended: Client disconnected");
+      } else {
+        CAMILLE_ERROR("Unexpected Session Error: {}", error_code.message());
+      }
+    }
+  };
+
   void DoRead() {
-    auto self(shared_from_this());
-    asio::async_read_until(
-        *socket_, stream_buffer_, "\n",
-        [this, self](const std::error_code& error_code, size_t bytes) mutable -> void {
-          if (!error_code) {
-            auto buffers = stream_buffer_.data();
-            std::string buffer_data(
-                asio::buffers_begin(buffers),
-                asio::buffers_end(buffers) + static_cast<std::ptrdiff_t>(bytes));
-            DoWrite(bytes);
-          } else {
-            CAMILLE_ERROR(error_code.message());
-          }
-        });
+    asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n", ReadHandler{shared_from_this()});
   }
 
-  void DoWrite(size_t bytes_to_write) {
-    auto self(shared_from_this());
-    asio::async_write(
-        *socket_, stream_buffer_, asio::transfer_exactly(bytes_to_write),
-        [this, self, bytes_to_write](const std::error_code& error_code, size_t) mutable -> void {
-          if (!error_code) {
-            //   stream_buffer_.consume(bytes_to_write);
-            DoRead();
-          } else {
-            CAMILLE_ERROR(error_code.message());
-          }
-        });
+  void DoWrite(std::size_t bytes_to_write) {
+    asio::async_write(*socket_, stream_buffer_, asio::transfer_exactly(bytes_to_write),
+                      WriteHandler(shared_from_this(), bytes_to_write));
   }
 
   types::aio::AsioIOStreamBuffer stream_buffer_;
@@ -76,8 +90,8 @@ private:
         auto self(shared_from_this());
         // HTTP headers end with a double CRLF
         asio::async_read_until(socket_, stream_buffer_, "\r\n\r\n",
-            [this, self](const std::error_code& ec, size_t bytes) {
-                if (!ec) {
+            [this, self](const std::error_code& error_code, size_t bytes) {
+                if (!error_code) {
                     // Extract headers from the buffer
                     auto buffers = stream_buffer_.data();
                     std::string header_data(
@@ -108,8 +122,8 @@ private:
         size_t remaining = (length > stream_buffer_.size()) ? (length - stream_buffer_.size()) : 0;
 
         asio::async_read(socket_, stream_buffer_, asio::transfer_exactly(remaining),
-            [this, self, length](const std::error_code& ec, size_t bytes) {
-                if (!ec) {
+            [this, self, length](const std::error_code& error_code, size_t bytes) {
+                if (!error_code) {
                     auto buffers = stream_buffer_.data();
                     std::string body_data(
                         asio::buffers_begin(buffers),
@@ -132,8 +146,8 @@ private:
         auto self(shared_from_this());
         auto response_ptr = std::make_shared<std::string>(std::move(response));
         asio::async_write(socket_, asio::buffer(*response_ptr),
-            [this, self, response_ptr](std::error_code ec, size_t) {
-                if (!ec) {
+            [this, self, response_ptr](std::error_code error_code, size_t) {
+                if (!error_code) {
                     // Keep-alive logic: read the next request
                     ReadHeaders();
                 }
@@ -169,11 +183,11 @@ private:
 
        // We look for the HTTP header terminator
        asio::async_read_until(socket_, stream_buffer_, "\r\n\r\n",
-           [this, self](const std::error_code& ec, size_t bytes_transferred) {
-               if (!ec) {
+           [this, self](const std::error_code& error_code, size_t bytes_transferred) {
+               if (!error_code) {
                    ProcessBuffer(bytes_transferred);
-               } else if (ec != asio::error::eof) {
-                   std::println("Read Error: {}", ec.message());
+               } else if (error_code != asio::error::eof) {
+                   std::println("Read Error: {}", error_code.message());
                    // Socket will close when 'self' goes out of scope
                }
            });

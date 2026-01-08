@@ -36,7 +36,11 @@ class Server {
 
   bool operator()() const { return acceptor_.is_open(); }
 
-  void Run() { io_context_pool_.Run(); }
+  void Run(std::function<void()> callback) {
+    io_context_pool_.Run();
+    callback();
+    io_context_pool_.Wait();
+  }
 
  private:
   void StartAccept() {
@@ -45,12 +49,14 @@ class Server {
 
     acceptor_.async_accept(*new_socket, [this, new_socket](const std::error_code& error_code) {
       if (!error_code) {
-        std::make_shared<network::Session>(std::move(*new_socket))->Start();
+        std::make_shared<network::Session>(new_socket)->Start();
       }
 
       if (acceptor_.is_open()) {
         StartAccept();
         CAMILLE_DEBUG("Acceptor is open for connetions");
+      } else {
+        CAMILLE_ERROR("Acceptor is closed");
       }
     });
   }

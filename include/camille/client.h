@@ -6,6 +6,7 @@
 #include "logging.h"
 #include "server.h"
 
+#include <cstdint>
 #include <string>
 #include <thread>
 
@@ -19,7 +20,7 @@ class BaseClient {
  public:
   virtual ~BaseClient() = default;
 
-  // virtual void Run(const std::string& base_client_ip, int base_client_port) = 0;
+  virtual void Run(const std::string& base_client_ip, std::uint16_t base_client_port) = 0;
   virtual void AddMiddleware(const middleware::BaseMiddleware& middleware) = 0;
   virtual void AddRouter(const router::Router& router) = 0;
 };
@@ -36,14 +37,14 @@ class Camille : public client::BaseClient {
   Camille(Camille&&) = default;
   Camille& operator=(Camille&&) = default;
 
-  void Run(const std::string& host, std::uint16_t port) {
+  void Run(const std::string& host, std::uint16_t port) override {
     host_ = host;
     port_ = port;
     if (!server_) {
       server_ = std::make_unique<server::Server>(host_, port_, pool_size_);
     }
     CAMILLE("Listening at: http://{}:{}", host_, port_);
-    server_->Run();
+    server_->Run([this]() { CAMILLE("Listening at: http://{}:{}", host_, port_); });
   }
 
   [[nodiscard]] bool IsDebugEnabled() const { return debug_; }

@@ -5,11 +5,16 @@
 #include <chrono>
 #include <format>
 
+/**
+ * @brief Camille Logging Functionality
+ * @todo maybe just use spdlog async logger?
+ */
+
 namespace logger {
 
 constexpr const char* TrimPath(const char* path) {
   /**
-   * @brief SD Algo for finding the right path
+   * @brief sliding window algo for finding the shortened path
    */
   const char* last = path;
   const char* second_last = path;
