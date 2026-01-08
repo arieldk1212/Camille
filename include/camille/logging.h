@@ -1,17 +1,62 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_LOGGING_H_
 #define CAMILLE_INCLUDE_CAMILLE_LOGGING_H_
 
-#include <mutex>
+#include <print>
+#include <chrono>
+#include <format>
 
-// TODO: add timestamps.
+/**
+ * @brief Camille Logging Functionality
+ * @todo maybe just use spdlog async logger?
+ */
+
 namespace logger {
 
-enum class LogLevels : std::uint8_t { DEBUG, INFO, WARNING, ERROR, CRITICAL };
+constexpr const char* TrimPath(const char* path) {
+  /**
+   * @brief sliding window algo for finding the shortened path
+   */
+  const char* last = path;
+  const char* second_last = path;
+  for (const char* pos = path; *pos; ++pos) {
+    if (*pos == '/' || *pos == '\\') {
+      second_last = last;
+      last = pos + 1;
+    }
+  }
+  return (second_last == path) ? last : second_last;
+}
 
-class Logging {
- public:
- private:
-};
+template <typename... Args>
+inline void InternalLog(std::string_view level,
+                        std::string_view file,
+                        int line,
+                        std::format_string<Args...> message,
+                        Args&&... args) {
+  auto now = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+  std::string formatted_message = std::format(message, std::forward<Args>(args)...);
+  std::println("[{:%F %T} UTC] [{}] [{}:{}] {}", now, level, file, line, formatted_message);
+}
+
+#define CAMILLE(message, ...) \
+  logger::InternalLog("CAMILLE", logger::TrimPath(__FILE__), __LINE__, message, ##__VA_ARGS__)
+#define CAMILLE_TRACE(message, ...)                                                          \
+  logger::InternalLog("\033[32mTRACE\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
+                      ##__VA_ARGS__)
+#define CAMILLE_DEBUG(message, ...)                                                          \
+  logger::InternalLog("\033[36mDEBUG\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
+                      ##__VA_ARGS__)
+#define CAMILLE_INFO(message, ...) \
+  logger::InternalLog("INFO", logger::TrimPath(__FILE__), __LINE__, message, ##__VA_ARGS__)
+#define CAMILLE_WARNING(message, ...)                                                          \
+  logger::InternalLog("\033[33mWARNING\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
+                      ##__VA_ARGS__)
+#define CAMILLE_ERROR(message, ...)                                                          \
+  logger::InternalLog("\033[31mERROR\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
+                      ##__VA_ARGS__)
+#define CAMILLE_CRITICAL(message, ...)                                                          \
+  logger::InternalLog("\033[35mCRITICAL\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
+                      ##__VA_ARGS__)
 
 };  // namespace logger
 

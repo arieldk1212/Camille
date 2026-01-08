@@ -1,8 +1,8 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 #define CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 
-#include <unordered_map>
-#include <vector>
+#include "types.h"
+
 #include <string>
 
 namespace camille {
@@ -21,13 +21,6 @@ enum class StatusCodes : std::uint16_t {
   HTTP_500 = 500
 };
 
-namespace types {
-
-using Headers = std::unordered_map<std::string, std::string>;
-using ParserData = std::vector<std::tuple<std::string, std::string, std::string>>;
-
-};  // namespace types
-
 namespace headers {
 
 class Headers {
@@ -37,7 +30,7 @@ class Headers {
   bool AddHeader(const std::string& name, const std::string& value);
 
  private:
-  types::Headers headers_;
+  types::camille::CamilleHeaders headers_;
 };
 
 class TypeHeaders {

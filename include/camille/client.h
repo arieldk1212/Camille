@@ -3,16 +3,12 @@
 
 #include "middleware.h"
 #include "router.h"
-#include "intermediary.h"
+#include "logging.h"
+#include "server.h"
 
+#include <cstdint>
 #include <string>
-
-#define DEBUG(obj, msg)                     \
-  do {                                      \
-    if ((obj) && (obj)->IsDebugEnabled()) { \
-      std::println("[DEBUG] {}", msg);      \
-    }                                       \
-  } while (0)
+#include <thread>
 
 // TODO: think about how to set the debug mode, maybe in
 // config file or something else, maybe not inside Camille?
@@ -24,7 +20,7 @@ class BaseClient {
  public:
   virtual ~BaseClient() = default;
 
-  virtual void Run(const std::string& base_client_ip, int base_client_port) = 0;
+  virtual void Run(const std::string& base_client_ip, std::uint16_t base_client_port) = 0;
   virtual void AddMiddleware(const middleware::BaseMiddleware& middleware) = 0;
   virtual void AddRouter(const router::Router& router) = 0;
 };
@@ -33,11 +29,7 @@ class BaseClient {
 class Camille : public client::BaseClient {
  public:
   Camille() { InitRouters(); }
-  ~Camille() override {
-    if (server_) {
-      server_->Stop();
-    }
-  }
+  ~Camille() override {}
 
   Camille(const Camille&) = delete;
   Camille& operator=(const Camille&) = delete;
@@ -45,18 +37,26 @@ class Camille : public client::BaseClient {
   Camille(Camille&&) = default;
   Camille& operator=(Camille&&) = default;
 
-  void Run(const std::string& client_ip, int client_port) override {
-    intermediary::Run(server_, client_ip, client_port);
+  void Run(const std::string& host, std::uint16_t port) override {
+    host_ = host;
+    port_ = port;
+    if (!server_) {
+      server_ = std::make_unique<server::Server>(host_, port_, pool_size_);
+    }
+    CAMILLE("Listening at: http://{}:{}", host_, port_);
+    server_->Run([this]() { CAMILLE("Listening at: http://{}:{}", host_, port_); });
   }
 
-  bool IsDebugEnabled() const { return debug_; }
+  [[nodiscard]] bool IsDebugEnabled() const { return debug_; }
 
   void SetDebug(bool debug) { debug_ = debug; };
   void SetServerName(const std::string& server_name) { server_name_ = server_name; }
   void SetServerVersion(const std::string& server_version) { server_version_ = server_version; }
+  void SetPoolSize(unsigned pool_size) { pool_size_ = pool_size; }
 
   void AddMiddleware(const middleware::BaseMiddleware& middleware) override {
-    std::println("Middleware Added");
+    auto name = middleware.GetMiddlewareName();
+    CAMILLE("Middleware Added {}", middleware.GetMiddlewareName());
   }
   void AddRouter(const router::Router& router) override {}
 
@@ -74,10 +74,13 @@ class Camille : public client::BaseClient {
 
  private:
   bool debug_{false};
+  std::string host_;
+  std::uint16_t port_{0};
   std::string server_name_;
   std::string server_version_;
   std::vector<router::Router> routers_;  // maybe some sort of tree? prefix tree?
-  std::optional<server::Server> server_;
+  types::camille::CamilleUnique<server::Server> server_;
+  unsigned pool_size_{std::thread::hardware_concurrency()};
 };
 
 };  // namespace camille
