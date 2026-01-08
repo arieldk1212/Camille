@@ -2,6 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
 #include "types.h"
+#include "logging.h"
 
 #include "asio/read_until.hpp"
 #include "asio/write.hpp"
@@ -19,38 +20,44 @@ class Session : public std::enable_shared_from_this<Session> {
    */
  public:
   explicit Session(types::aio::AsioIOSocket socket)
-      : socket_(std::move(socket)) {}
+      : socket_(types::camille::CamilleShared<types::aio::AsioIOSocket>(&socket)) {}
 
   void Start() { DoRead(); }
 
  private:
   void DoRead() {
     auto self(shared_from_this());
-    asio::async_read_until(socket_, stream_buffer_, "\n",
-                           [this, self](const std::error_code& error_code, size_t bytes) {
-                             if (!error_code) {
-                               auto buffers = stream_buffer_.data();
-                               std::string buffer_data(
-                                   asio::buffers_begin(buffers),
-                                   asio::buffers_end(buffers) + static_cast<std::ptrdiff_t>(bytes));
-                               DoWrite(bytes);
-                             }
-                           });
+    asio::async_read_until(
+        *socket_, stream_buffer_, "\n",
+        [this, self](const std::error_code& error_code, size_t bytes) mutable -> void {
+          if (!error_code) {
+            auto buffers = stream_buffer_.data();
+            std::string buffer_data(
+                asio::buffers_begin(buffers),
+                asio::buffers_end(buffers) + static_cast<std::ptrdiff_t>(bytes));
+            DoWrite(bytes);
+          } else {
+            CAMILLE_ERROR(error_code.message());
+          }
+        });
   }
 
   void DoWrite(size_t bytes_to_write) {
     auto self(shared_from_this());
-    asio::async_write(socket_, stream_buffer_, asio::transfer_exactly(bytes_to_write),
-                      [this, self](std::error_code error_code, size_t) {
-                        if (!error_code) {
-                          DoRead();
-                        }
-                      });
+    asio::async_write(
+        *socket_, stream_buffer_, asio::transfer_exactly(bytes_to_write),
+        [this, self, bytes_to_write](const std::error_code& error_code, size_t) mutable -> void {
+          if (!error_code) {
+            //   stream_buffer_.consume(bytes_to_write);
+            DoRead();
+          } else {
+            CAMILLE_ERROR(error_code.message());
+          }
+        });
   }
 
- private:
-  types::aio::AsioIOSocket socket_;
   types::aio::AsioIOStreamBuffer stream_buffer_;
+  types::camille::CamilleShared<types::aio::AsioIOSocket> socket_;
 };
 
 };  // namespace network

@@ -26,7 +26,7 @@ using CamilleShared = std::shared_ptr<SharedPtrType>;
  * @tparam UniquePtrType
  */
 template <typename UniquePtrType>
-using CamilleUnique = std::shared_ptr<UniquePtrType>;
+using CamilleUnique = std::unique_ptr<UniquePtrType>;
 
 /**
  * @brief Camille Vector
@@ -43,7 +43,8 @@ using CamilleHeaders = std::unordered_map<std::string, std::string>;
 
 namespace http {
 /**
- * @brief HTTP Parser data strcuture
+ * @brief HTTP Parser data structure
+ * @details Tuple contains (method, path, version) or document what each element represents
  */
 using ParserData = std::vector<std::tuple<std::string, std::string, std::string>>;
 };  // namespace http
@@ -82,7 +83,7 @@ using AsioIOStreamBuffer = asio::streambuf;
 /**
  * @brief Asio IP Address
  */
-using AsioIOSAddress = asio::ip::address;
+using AsioIOAddress = asio::ip::address;
 
 /**
  * @brief vector shared_ptr of Asio io context
@@ -91,7 +92,7 @@ using SharedAsioIoContextVector =
     camille::CamilleVector<camille::CamilleShared<aio::AsioIOContext>>;
 
 /**
- * @brief vector shared_ptr of Asio io context
+ * @brief vector of shared_ptr Asio work guards
  */
 using SharedAsioWorkGuardsVector = camille::CamilleVector<aio::SharedAsioWorkGuards>;
 

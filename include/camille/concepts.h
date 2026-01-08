@@ -2,14 +2,13 @@
 #define CAMILLE_INCLUDE_CAMILLE_CONCEPTS_H_
 
 #include <concepts>
-#include <string>
-#include <type_traits>
+#include <string_view>
 
 namespace camille {
 namespace concepts {
 
 /**
- * @brief For non-negetive positive integers.
+ * @brief For unsigned integers.
  * @tparam T
  */
 template <typename T>

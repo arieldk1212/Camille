@@ -23,23 +23,24 @@ class LruCache : public DataStructure {
   explicit LruCache(size_t capacity)
       : capacity_(capacity) {}
 
-  void get(KeyType key, ValueType value) {
-    auto& it = cache_.at(key);
+  std::optional<ValueType> get(const KeyType& key) {
+    auto it = cache_.find(key);
     if (it == cache_.end()) {
-      return;
+      return std::nullopt;
     }
-    items_.splice(items_.begin(), items_, it->second->second);
+    items_.splice(items_.begin(), items_, it->second);
+    return it->second->first;
   }
 
   void put(KeyType key, ValueType value) {
-    auto& it = cache_.at(key);
+    auto it = cache_.find(key);
     if (it != cache_.end()) {
       items_.splice(items_.begin(), items_, it->second->second);
-      it->second->second = value;
+      it->second->first = value;
       return;
     }
     if (items_.size() == capacity_) {
-      int key_to_delete = items_.back().first;
+      KeyType key_to_delete = items_.back().first;
       items_.pop_back();
       cache_.erase(key_to_delete);
     }

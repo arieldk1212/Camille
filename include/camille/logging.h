@@ -35,22 +35,22 @@ inline void InternalLog(std::string_view level,
 
 #define CAMILLE(message, ...) \
   logger::InternalLog("CAMILLE", logger::TrimPath(__FILE__), __LINE__, message, ##__VA_ARGS__)
-#define TRACE(message, ...)                                                                  \
+#define CAMILLE_TRACE(message, ...)                                                          \
   logger::InternalLog("\033[32mTRACE\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
                       ##__VA_ARGS__)
-#define DEBUG(message, ...)                                                                  \
+#define CAMILLE_DEBUG(message, ...)                                                          \
   logger::InternalLog("\033[36mDEBUG\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
                       ##__VA_ARGS__)
-#define INFO(message, ...) \
+#define CAMILLE_INFO(message, ...) \
   logger::InternalLog("INFO", logger::TrimPath(__FILE__), __LINE__, message, ##__VA_ARGS__)
-#define WARNING(message, ...)                                                                  \
+#define CAMILLE_WARNING(message, ...)                                                          \
   logger::InternalLog("\033[33mWARNING\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
                       ##__VA_ARGS__)
-#define ERROR(message, ...)                                                                  \
+#define CAMILLE_ERROR(message, ...)                                                          \
   logger::InternalLog("\033[31mERROR\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
                       ##__VA_ARGS__)
-#define CRITICAL(message, ...)                                                                 \
-  logger::InternalLog("\033[35mCRITICAL\33[0m", logger::TrimPath(__FILE__), __LINE__, message, \
+#define CAMILLE_CRITICAL(message, ...)                                                          \
+  logger::InternalLog("\033[35mCRITICAL\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
                       ##__VA_ARGS__)
 
 };  // namespace logger

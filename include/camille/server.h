@@ -1,10 +1,11 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_SERVER_H_
 #define CAMILLE_INCLUDE_CAMILLE_SERVER_H_
 
-#include "asio/ip/address.hpp"
-#include "camille/types.h"
 #include "network.h"
 #include "pool.h"
+#include "logging.h"
+
+#include "asio/ip/address.hpp"
 
 #include <system_error>
 #include <thread>
@@ -17,10 +18,20 @@ class Server {
   Server(const std::string& host,
          std::uint16_t port,
          concepts::UnsignedIntegral auto pool_size = std::thread::hardware_concurrency())
-      : io_context_pool_(pool_size),
+      : io_context_pool_(pool_size == 0 ? 1 : pool_size),
         acceptor_(io_context_pool_.GetIOContext(),
                   asio::ip::tcp::endpoint(asio::ip::make_address(host), port)) {
+    if (pool_size == 0) {
+      CAMILLE_CRITICAL("Server pool_size initialized with 0, Defaulting to 1");
+    }
     StartAccept();
+  }
+  ~Server() {
+    io_context_pool_.Stop();
+    if (acceptor_.is_open()) {
+      std::error_code error_code;
+      acceptor_.close(error_code);
+    }
   }
 
   bool operator()() const { return acceptor_.is_open(); }
@@ -36,7 +47,11 @@ class Server {
       if (!error_code) {
         std::make_shared<network::Session>(std::move(*new_socket))->Start();
       }
-      StartAccept();
+
+      if (acceptor_.is_open()) {
+        StartAccept();
+        CAMILLE_DEBUG("Acceptor is open for connetions");
+      }
     });
   }
 

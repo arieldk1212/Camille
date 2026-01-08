@@ -5,6 +5,7 @@
 #include "concepts.h"
 #include "logging.h"
 
+#include <stdexcept>
 #include <thread>
 
 namespace camille {
@@ -30,9 +31,21 @@ class ContextPool : public Pool {
   }
 
   void Run() {
+    bool excpected = false;
+    if (!is_running_.compare_exchange_strong(excpected, true)) {
+      CAMILLE_CRITICAL("Error when trying to run context pool");
+      throw std::runtime_error("Error when trying to run context pool");
+    }
     for (const auto& ctx : io_contexts_) {
-      threads_.emplace_back([&ctx]() { ctx->run(); });
+      threads_.emplace_back([ctx]() { ctx->run(); });
       CAMILLE("BOOTING WORKER");
+    }
+  }
+
+  void Stop() {
+    work_guards_.clear();
+    for (const auto& ctx : io_contexts_) {
+      ctx->stop();
     }
   }
 
@@ -44,6 +57,7 @@ class ContextPool : public Pool {
  private:
   unsigned pool_size_;
   std::atomic<size_t> next_io_context_{0};
+  std::atomic<bool> is_running_{false};
   types::aio::SharedAsioIoContextVector io_contexts_;
   types::aio::SharedAsioWorkGuardsVector work_guards_;
   types::camille::CamilleVector<std::jthread> threads_;

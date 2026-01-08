@@ -13,9 +13,9 @@ class Benchmark {
         start_(std::chrono::high_resolution_clock::now()) {}
   ~Benchmark() {
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_);
+    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_);
 
-    std::println("Benchmarked At: {}ms", elapsed_seconds);
+    std::println("{}: {}ms", benchmark_name_, elapsed_milliseconds);
   }
 
  private:

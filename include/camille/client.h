@@ -7,7 +7,6 @@
 #include "server.h"
 
 #include <string>
-#include <print>
 #include <thread>
 
 // TODO: think about how to set the debug mode, maybe in
@@ -43,8 +42,8 @@ class Camille : public client::BaseClient {
     if (!server_) {
       server_ = std::make_unique<server::Server>(host_, port_, pool_size_);
     }
-    server_->Run();
     CAMILLE("Listening at: http://{}:{}", host_, port_);
+    server_->Run();
   }
 
   [[nodiscard]] bool IsDebugEnabled() const { return debug_; }

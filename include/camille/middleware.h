@@ -21,10 +21,10 @@ class HTTPMiddleware : public BaseMiddleware {
  public:
   HTTPMiddleware();
 
-  [[nodiscard]] std::string GetMiddlewareName() const override { return middlware_name_; }
+  [[nodiscard]] std::string GetMiddlewareName() const override { return middleware_name_; }
 
  private:
-  std::string middlware_name_{"HTTP"};
+  std::string middleware_name_{"HTTP"};
 };
 
 };  // namespace middleware
