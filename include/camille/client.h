@@ -3,15 +3,8 @@
 
 #include "middleware.h"
 #include "router.h"
-#include "logging.h"
 #include "server.h"
 
-#include <cstdint>
-#include <string>
-#include <thread>
-
-// TODO: think about how to set the debug mode, maybe in
-// config file or something else, maybe not inside Camille?
 namespace camille {
 
 namespace client {
@@ -43,7 +36,6 @@ class Camille : public client::BaseClient {
     if (!server_) {
       server_ = std::make_unique<server::Server>(host_, port_, pool_size_);
     }
-    CAMILLE("Listening at: http://{}:{}", host_, port_);
     server_->Run([this]() { CAMILLE("Listening at: http://{}:{}", host_, port_); });
   }
 

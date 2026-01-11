@@ -1,8 +1,6 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
-#include "asio/buffers_iterator.hpp"
-#include "asio/error.hpp"
 #include "types.h"
 #include "logging.h"
 
@@ -27,38 +25,51 @@ class Session : public std::enable_shared_from_this<Session> {
   void Start() { DoRead(); }
 
  private:
-  struct ReadHandler {
-    types::camille::CamilleShared<Session> self;
+  class ReadHandler {
+   public:
+    explicit ReadHandler(types::camille::CamilleShared<Session> ptr)
+        : self(std::move(ptr)) {}
+
     void operator()(const std::error_code& error_code, std::size_t bytes) const {
       if (!error_code) {
         auto buffer = self->stream_buffer_.data();
+
+        // DEBUG
         std::string data(
             asio::buffers_begin(buffer),
             std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
-        std::println("Data: {}", data);
+        std::println("{}", data);
 
         self->stream_buffer_.consume(bytes);
         self->DoWrite(bytes);
       } else if (error_code == asio::error::eof) {
-        CAMILLE_ERROR("Session ended: Client disconnected");
+        CAMILLE_WARNING("Session ended");
       }
     }
+
+    types::camille::CamilleShared<Session> self;
   };
 
-  struct WriteHandler {
-    types::camille::CamilleShared<Session> self;
-    std::size_t to_consume;
+  class WriteHandler {
+   public:
+    WriteHandler(types::camille::CamilleShared<Session> ptr, size_t consume)
+        : self(std::move(ptr)),
+          to_consume(consume) {}
+
     void operator()(const std::error_code& error_code, std::size_t) const {
       if (!error_code) {
         self->stream_buffer_.consume(to_consume);
         self->DoRead();
       } else if (error_code == asio::error::eof || error_code == asio::error::connection_reset ||
                  error_code == asio::error::broken_pipe) {
-        CAMILLE_DEBUG("Session ended: Client disconnected");
+        CAMILLE_WARNING("Session ended");
       } else {
         CAMILLE_ERROR("Unexpected Session Error: {}", error_code.message());
       }
     }
+
+    size_t to_consume;
+    types::camille::CamilleShared<Session> self;
   };
 
   void DoRead() {
