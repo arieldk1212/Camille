@@ -11,11 +11,6 @@ class IDI {
 class ServerDI : public IDI {
  public:
   ServerDI();
-
-  void SetServerState();
-
- private:
-  bool server_state_;  // debug or not
 };
 
 #endif

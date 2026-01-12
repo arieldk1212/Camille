@@ -35,15 +35,12 @@ namespace request {
 
 class Request {
  public:
-  explicit Request(types::aio::AsioIOSocket&& socket)
-      : socket_(std::move(socket)) {}
+  Request();
   ~Request() = default;
 
   bool AddHeader(const std::string& header_name, const std::string& header_value);
 
  private:
-  types::aio::AsioIOSocket socket_;
-  types::aio::AsioIOStreamBuffer stream_buffer_;
   std::string path_;
   std::string host_;
   std::uint16_t port_;
