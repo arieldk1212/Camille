@@ -41,7 +41,10 @@ class Camille : public client::BaseClient {
 
   [[nodiscard]] bool IsDebugEnabled() const { return debug_; }
 
-  void SetDebug(bool debug) { debug_ = debug; };
+  void SetDebug(bool debug) {
+    debug_ = debug;
+    server_->SetState(debug_);
+  };
   void SetServerName(const std::string& server_name) { server_name_ = server_name; }
   void SetServerVersion(const std::string& server_version) { server_version_ = server_version; }
   void SetPoolSize(unsigned pool_size) { pool_size_ = pool_size; }
@@ -70,7 +73,7 @@ class Camille : public client::BaseClient {
   std::uint16_t port_{0};
   std::string server_name_;
   std::string server_version_;
-  std::vector<router::Router> routers_;  // maybe some sort of tree? prefix tree?
+  std::vector<router::Router> routers_;  // add prefix tree.
   types::camille::CamilleUnique<server::Server> server_;
   unsigned pool_size_{std::thread::hardware_concurrency()};
 };
