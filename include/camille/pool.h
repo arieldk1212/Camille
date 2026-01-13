@@ -67,8 +67,8 @@ class ContextPool : public Pool {
 
  private:
   unsigned pool_size_;
-  std::atomic<size_t> next_io_context_{0};
   std::atomic<bool> is_running_{false};
+  std::atomic<size_t> next_io_context_{0};
   types::aio::SharedAsioIoContextVector io_contexts_;
   types::aio::SharedAsioWorkGuardsVector work_guards_;
   types::camille::CamilleVector<std::jthread> threads_;
