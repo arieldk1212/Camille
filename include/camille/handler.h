@@ -1,8 +1,10 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 #define CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 
+#include "camille/logging.h"
 #include "request.h"
 #include "response.h"
+#include "parser.h"
 
 namespace camille {
 namespace handler {
@@ -32,6 +34,11 @@ class Handler {
  public:
   static request::Request Parser(std::string_view data) {
     request::Request request;
+    parser::Parser parser{data};
+
+    if (!parser) {
+      CAMILLE_ERROR("request parsing error");
+    }
 
     return request;
   }

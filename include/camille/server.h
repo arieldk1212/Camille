@@ -34,7 +34,7 @@ class Server {
     }
   }
 
-  bool operator()() const { return acceptor_.is_open(); }
+  explicit operator bool() const { return acceptor_.is_open(); }
 
   void SetState(bool state) { state_ = state; }
 

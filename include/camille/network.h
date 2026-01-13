@@ -21,6 +21,7 @@ namespace network {
 class Session : public std::enable_shared_from_this<Session> {
   /**
    * @todo to add ssl we need do_handshake(), pass it to start()
+   * @todo add timeout with async_wait.
    * @brief check out boost implementation for server.
    */
  public:

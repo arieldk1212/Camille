@@ -9,45 +9,62 @@
 namespace camille {
 namespace parser {
 
+constexpr static std::uint64_t kBodyLimit = 64 * 1024;
+enum class States : std::uint8_t {
+  READY,
+  WAIT,
+  METHOD,
+  URI,
+  VERSION,
+  KEY,
+  VALUE,
+  BODY,
+  COMPLETE,
+  GARBAGE
+};
+
+/**
+ * @ref request smuggling
+ * always add body and be willing to accept one.
+ * interact from front and back with the same http version.
+ * throw error on exception, dont continue.
+ */
+
 class Parser {
  public:
-  Parser(size_t limit, types::camille::CamilleHeaders& headers)
-      : data_limit_(limit),
-        headers_(headers) {}
-  ~Parser() { current_state_ = States::finish; }
+  explicit Parser(std::string_view data)
+      : data_(data) {}
 
-  enum class States : std::uint8_t { ready, wait, head, headers, body, finish };
-  std::uint64_t body_limit = 64 * 1024;
-
-  bool operator()() const { return current_state_ == States::finish; }
+  explicit operator bool() const { return current_state_ == States::COMPLETE; }
 
   void SetState(States state) { current_state_ = state; }
 
   States StateMachine(auto prim) {
     if (prim == "\n") {
-      current_state_ = States::head;
+      // current_state_ = States::head;
     }
     return current_state_;
   }
 
-  void ParseHeader();
   void ParseHead();
-  void ParseFinish();
   void ParseBody();
+  void ParseHeader();
   void WriteHeaders();
-
   void ParseAll(std::string_view data) {
-    SetState(States::ready);
-    std::string curr;
-    for (int i{0}; i < sizeof(data_); ++i) {
+    SetState(States::METHOD);
+
+    switch(current_state_) {
+      case (States::METHOD):
+        
     }
   }
 
  private:
-  types::camille::CamilleHeaders headers_;
-  const char* data_;
-  size_t data_limit_;
-  States current_state_{States::ready};
+  std::string_view data_;                   // the request data
+  size_t data_limit_{kBodyLimit};           // total limit of the request
+  States current_state_{States::READY};     // current state of the machine
+  types::camille::CamilleHeaders headers_;  // headers
+  // types::aio::AsioIOMutableBuffer buffer_;
 };
 
 };  // namespace parser
