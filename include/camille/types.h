@@ -1,6 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_TYPES_H_
 #define CAMILLE_INCLUDE_CAMILLE_TYPES_H_
 
+#include "asio/buffer.hpp"
 #include "asio/io_context.hpp"
 #include "asio/ip/address.hpp"
 #include "asio/ip/tcp.hpp"
@@ -79,6 +80,16 @@ using AsioIOAcceptor = asio::ip::tcp::acceptor;
  * @brief Asio Stream Buffer
  */
 using AsioIOStreamBuffer = asio::streambuf;
+
+/**
+ * @brief Asio Mutable Buffer
+ */
+using AsioIOMutableBuffer = asio::mutable_buffer;
+
+/**
+ * @brief Asio Const Buffer
+ */
+using AsioIOConstBuffer = asio::const_buffer;
 
 /**
  * @brief Asio IP Address

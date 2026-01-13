@@ -58,7 +58,7 @@ class Server {
         StartAccept();
         CAMILLE_DEBUG("Acceptor is open for connetions");
       } else {
-        CAMILLE_ERROR("Acceptor is closed");
+        CAMILLE_ERROR("Server error, acceptor is closed");
       }
     });
   }

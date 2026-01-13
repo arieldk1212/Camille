@@ -1,11 +1,15 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
+#include "asio/basic_streambuf.hpp"
+#include "asio/completion_condition.hpp"
+#include "asio/streambuf.hpp"
 #include "types.h"
 #include "logging.h"
 #include "handler.h"
 
 #include "asio/read_until.hpp"
+#include "asio/read.hpp"
 #include "asio/write.hpp"
 
 #include <cstddef>
@@ -36,13 +40,13 @@ class Session : public std::enable_shared_from_this<Session> {
 
     void operator()(const std::error_code& error_code, std::size_t bytes) const {
       if (!error_code) {
-        auto buffer = self->stream_buffer_.data();
+        asio::streambuf::const_buffers_type buffer = self->stream_buffer_.data();
 
         std::string data(
             asio::buffers_begin(buffer),
             std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
-        auto res = handler::Handler::Process(data);
+        // auto res = handler::Handler::Process(data);
 
         // if (self->GetState()) {
         std::println("{}", data);
@@ -80,13 +84,19 @@ class Session : public std::enable_shared_from_this<Session> {
   };
 
   void DoRead() {
-    asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n", ReadHandler{shared_from_this()});
+    // asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n",
+    // ReadHandler{shared_from_this()});
+    asio::async_read(*socket_, stream_buffer_, ReadHandler{shared_from_this()});
   }
 
   void DoWrite(std::size_t bytes_to_write) {
-    asio::async_write(*socket_, stream_buffer_, asio::transfer_exactly(bytes_to_write),
-                      WriteHandler(shared_from_this(), bytes_to_write));
+    asio::async_write(*socket_, stream_buffer_, WriteHandler(shared_from_this(), bytes_to_write));
   }
+
+  /**
+   * @todo implement it with chorno for timeouts with condv.
+   */
+  void DoWait();
 
   bool state_{false};
   types::aio::AsioIOStreamBuffer stream_buffer_;
