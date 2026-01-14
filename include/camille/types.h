@@ -48,7 +48,7 @@ using CamilleUnorderedMap = std::unordered_map<Key, Value>;
 /**
  * @brief Headers data structure
  */
-using CamilleHeaders = CamilleUnorderedMap<std::string, std::string>;
+using CamilleHeaders = CamilleVector<std::pair<std::string, std::string>>;
 };  // namespace camille
 
 namespace http {

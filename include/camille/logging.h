@@ -28,6 +28,16 @@ constexpr const char* TrimPath(const char* path) {
   return (second_last == path) ? last : second_last;
 }
 
+/**
+ * @brief Core logging logic, version 23 only
+ * @todo should maybe "downgrade" into cout?
+ * @tparam Args
+ * @param level
+ * @param file
+ * @param line
+ * @param message
+ * @param args
+ */
 template <typename... Args>
 inline void InternalLog(std::string_view level,
                         std::string_view file,

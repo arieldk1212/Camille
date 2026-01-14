@@ -29,11 +29,11 @@ class Request {
   //   infra::Methods method;
 
  private:
-  bool has_auth_{false};
   std::string body_;
   std::string path_;
   size_t request_size_;
-  //   types::camille::CamilleHeaders headers_;
+  bool has_auth_{false};
+  types::camille::CamilleHeaders headers_;
 };
 
 };  // namespace request
