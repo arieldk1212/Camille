@@ -3,6 +3,7 @@
 
 #include <print>
 #include <chrono>
+#include <iostream>
 #include <format>
 
 /**
@@ -36,6 +37,8 @@ inline void InternalLog(std::string_view level,
   auto now = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
   std::string formatted_message = std::format(message, std::forward<Args>(args)...);
   std::println("[{:%F %T} UTC] [{}] [{}:{}] {}", now, level, file, line, formatted_message);
+  // std::cout << std::format("[{:%F %T} UTC] ", now) << "[" << level << "] "
+  //           << "[" << file << ":" << line << "] " << formatted_message << "\n";
 }
 
 #define CAMILLE(message, ...) \

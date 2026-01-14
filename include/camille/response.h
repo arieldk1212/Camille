@@ -4,7 +4,10 @@
 namespace camille {
 namespace response {
 
-class Response {};
+class Response {
+ public:
+ private:
+};
 
 };  // namespace response
 };  // namespace camille

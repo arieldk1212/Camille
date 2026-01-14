@@ -6,6 +6,9 @@
 #include "response.h"
 #include "parser.h"
 
+#include <iostream>
+#include <print>
+
 namespace camille {
 namespace handler {
 
@@ -34,7 +37,7 @@ class Handler {
  public:
   static request::Request Parser(std::string_view data) {
     request::Request request;
-    parser::Parser parser{data};
+    parser::Parser parser{data, request};
 
     if (!parser) {
       CAMILLE_ERROR("request parsing error");
@@ -43,13 +46,12 @@ class Handler {
     return request;
   }
 
-  [[nodiscard("response has to be consumed")]] static response::Response Process(
-      std::string_view data) {
-    response::Response response;
+  [[nodiscard("response has to be consumed")]] static std::string Process(std::string_view data) {
+    // response::Response response;
 
     auto req = Parser(data);
 
-    return response;
+    return std::string{req.method};
   }
 };
 

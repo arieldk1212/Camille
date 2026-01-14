@@ -2,7 +2,6 @@
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
 #include "asio/basic_streambuf.hpp"
-#include "asio/completion_condition.hpp"
 #include "asio/streambuf.hpp"
 #include "types.h"
 #include "logging.h"
@@ -47,7 +46,8 @@ class Session : public std::enable_shared_from_this<Session> {
             asio::buffers_begin(buffer),
             std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
-        // auto res = handler::Handler::Process(data);
+        auto res = handler::Handler::Process(data);
+        std::cout << res << " HERE!!! \n";
 
         // if (self->GetState()) {
         std::println("{}", data);
@@ -85,9 +85,8 @@ class Session : public std::enable_shared_from_this<Session> {
   };
 
   void DoRead() {
-    // asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n",
-    // ReadHandler{shared_from_this()});
-    asio::async_read(*socket_, stream_buffer_, ReadHandler{shared_from_this()});
+    asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n", ReadHandler{shared_from_this()});
+    // asio::async_read(*socket_, stream_buffer_, ReadHandler{shared_from_this()});
   }
 
   void DoWrite(std::size_t bytes_to_write) {

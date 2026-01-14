@@ -5,6 +5,7 @@
 #include "infra.h"
 
 #include <string>
+#include <utility>
 
 // TODO: implement: Zero-Copy Parsing
 // TODO: add main camille headers
@@ -15,19 +16,24 @@ namespace request {
 
 class Request {
  public:
-  Request(infra::Methods method, const std::string& path);
-  Request();
+  Request() = default;
   ~Request() = default;
 
   bool AddHeader(const std::string& header_name, const std::string& header_value);
+  //   void SetHeaders(types::camille::CamilleHeaders&& headers) { headers_ = std::move(headers); }
+  void SetBody(const std::string& body);
+
+  //   std::string_view GetMethod() { return infra::MethodString(method); }
+
+  std::string method;
+  //   infra::Methods method;
 
  private:
   bool has_auth_{false};
   std::string body_;
   std::string path_;
-  infra::Methods method_;
   size_t request_size_;
-  types::camille::CamilleHeaders headers_;
+  //   types::camille::CamilleHeaders headers_;
 };
 
 };  // namespace request

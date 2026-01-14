@@ -9,8 +9,65 @@ namespace camille {
 
 namespace infra {
 
-enum class Methods : std::uint8_t { GET, HEAD, POST, PATCH, PUT, DELETE, OPTIONS, CONNECT, TRACE };
-enum class NetworkError : std::uint8_t { Timeout, RemoteClosed, ConnectionReset, QuotaExceeded };
+enum class Methods : std::uint8_t {
+  kGet,
+  kHead,
+  kPost,
+  kPatch,
+  kPut,
+  kDelete,
+  kOptions,
+  kConnect,
+  kTrace,
+  kUnknown
+};
+
+static const types::camille::CamilleUnorderedMap<Methods, std::string_view> MethodRep{
+    {Methods::kGet, "GET"},         {Methods::kHead, "HEAD"},       {Methods::kPost, "POST"},
+    {Methods::kPatch, "PATCH"},     {Methods::kPut, "PUT"},         {Methods::kDelete, "DELETE"},
+    {Methods::kOptions, "OPTIONS"}, {Methods::kConnect, "CONNECT"}, {Methods::kTrace, "TRACE"},
+    {Methods::kUnknown, "UNKNOWN"},
+};
+
+static constexpr std::string_view MethodString(Methods method) { return MethodRep.at(method); }
+
+static Methods MethodEnum(std::string_view method) {
+  if (method == "GET") {
+    return Methods::kGet;
+  }
+  if (method == "POST") {
+    return Methods::kPost;
+  }
+  if (method == "PUT") {
+    return Methods::kPut;
+  }
+  if (method == "DELETE") {
+    return Methods::kDelete;
+  }
+  if (method == "PATCH") {
+    return Methods::kPatch;
+  }
+  if (method == "HEAD") {
+    return Methods::kHead;
+  }
+  if (method == "OPTIONS") {
+    return Methods::kOptions;
+  }
+  if (method == "TRACE") {
+    return Methods::kTrace;
+  }
+  if (method == "CONNECT") {
+    return Methods::kConnect;
+  }
+  return Methods::kUnknown;
+}
+
+enum class NetworkError : std::uint8_t {
+  kTimeout,
+  kRemoteClosed,
+  kConnectionReset,
+  kQuotaExceeded
+};
 
 // TODO: need to fill the rest, change the name to the error itself
 enum class StatusCodes : std::uint16_t {
