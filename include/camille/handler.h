@@ -6,9 +6,6 @@
 #include "response.h"
 #include "parser.h"
 
-#include <iostream>
-#include <print>
-
 namespace camille {
 namespace handler {
 
@@ -35,24 +32,41 @@ Gecko) Chrome/143.0.0.0 Safari/537.36 Accept:
 
 class Handler {
  public:
-  static request::Request Parser(std::string_view data) {
-    request::Request request;
-    parser::Parser parser{data, request};
+  virtual ~Handler() = default;
+};
 
-    if (!parser) {
+class RequestHandler : public Handler {
+ public:
+  RequestHandler() = default;
+
+  request::Request Parse(std::string_view data) {
+    parser_.Parse(data, request_);
+    if (!parser_) {
       CAMILLE_ERROR("request parsing error");
     }
-
-    return request;
+    return request_;
   }
 
-  [[nodiscard("response has to be consumed")]] static std::string Process(std::string_view data) {
-    // response::Response response;
+ private:
+  parser::Parser parser_;
+  request::Request request_;
+};
 
-    auto req = Parser(data);
+class ResponseHandler : public Handler {
+ public:
+  ResponseHandler() = default;
 
-    return std::string{req.method};
+  response::Response Parse(std::string_view data) {
+    if (!parser_) {
+      CAMILLE_ERROR("response parsing error");
+    }
+    parser_.Parse(data, response_);
+    return response_;
   }
+
+ private:
+  parser::Parser parser_;
+  response::Response response_;
 };
 
 };  // namespace handler

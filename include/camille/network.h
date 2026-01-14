@@ -35,10 +35,12 @@ class Session : public std::enable_shared_from_this<Session> {
  private:
   class ReadHandler {
    public:
-    explicit ReadHandler(types::camille::CamilleShared<Session> ptr)
-        : self(std::move(ptr)) {}
+    explicit ReadHandler(types::camille::CamilleShared<Session> ptr,
+                         handler::RequestHandler& request_handler)
+        : self(std::move(ptr)),
+          self_request_handler(request_handler) {}
 
-    void operator()(const std::error_code& error_code, std::size_t bytes) const {
+    void operator()(const std::error_code& error_code, std::size_t bytes) {
       if (!error_code) {
         asio::streambuf::const_buffers_type buffer = self->stream_buffer_.data();
 
@@ -46,11 +48,11 @@ class Session : public std::enable_shared_from_this<Session> {
             asio::buffers_begin(buffer),
             std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
-        auto res = handler::Handler::Process(data);
-        std::cout << res << " HERE!!! \n";
+        auto req = self_request_handler.Parse(std::string_view(data));
+        std::cout << req.method << " HERE!!! \n";
 
         // if (self->GetState()) {
-        std::println("{}", data);
+        // std::println("{}", data);
         // }
 
         self->stream_buffer_.consume(bytes);
@@ -59,14 +61,19 @@ class Session : public std::enable_shared_from_this<Session> {
         CAMILLE_WARNING("Session ended");
       }
     }
+
     types::camille::CamilleShared<Session> self;
+    handler::RequestHandler self_request_handler;
   };
 
   class WriteHandler {
    public:
-    WriteHandler(types::camille::CamilleShared<Session> ptr, size_t consume)
+    WriteHandler(types::camille::CamilleShared<Session> ptr,
+                 size_t consume,
+                 handler::ResponseHandler& response_handler)
         : self(std::move(ptr)),
-          to_consume(consume) {}
+          to_consume(consume),
+          self_response_handler(response_handler) {}
 
     void operator()(const std::error_code& error_code, std::size_t) const {
       if (!error_code) {
@@ -82,15 +89,19 @@ class Session : public std::enable_shared_from_this<Session> {
 
     size_t to_consume;
     types::camille::CamilleShared<Session> self;
+    handler::ResponseHandler self_response_handler;
   };
 
   void DoRead() {
-    asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n", ReadHandler{shared_from_this()});
-    // asio::async_read(*socket_, stream_buffer_, ReadHandler{shared_from_this()});
+    asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n",
+                           ReadHandler{shared_from_this(), request_handler_});
+    // asio::async_read(*socket_, stream_buffer_, ReadHandler{shared_from_this(),
+    // request_handler_});
   }
 
   void DoWrite(std::size_t bytes_to_write) {
-    asio::async_write(*socket_, stream_buffer_, WriteHandler(shared_from_this(), bytes_to_write));
+    asio::async_write(*socket_, stream_buffer_,
+                      WriteHandler(shared_from_this(), bytes_to_write, response_handler_));
   }
 
   /**
@@ -99,6 +110,8 @@ class Session : public std::enable_shared_from_this<Session> {
   void DoWait();
 
   bool state_{false};
+  handler::RequestHandler request_handler_;
+  handler::ResponseHandler response_handler_;
   types::aio::AsioIOStreamBuffer stream_buffer_;
   types::camille::CamilleShared<types::aio::AsioIOSocket> socket_;
 };
