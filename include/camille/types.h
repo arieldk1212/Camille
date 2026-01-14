@@ -8,6 +8,7 @@
 #include "asio/streambuf.hpp"
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -16,18 +17,18 @@ namespace types {
 
 namespace camille {
 /**
- * @brief Camille Shared Pointer
- * @tparam SharedPtrType
- */
-template <typename SharedPtrType>
-using CamilleShared = std::shared_ptr<SharedPtrType>;
-
-/**
  * @brief Camille Unique Pointer
  * @tparam UniquePtrType
  */
 template <typename UniquePtrType>
 using CamilleUnique = std::unique_ptr<UniquePtrType>;
+
+/**
+ * @brief Camille Shared Pointer
+ * @tparam SharedPtrType
+ */
+template <typename SharedPtrType>
+using CamilleShared = std::shared_ptr<SharedPtrType>;
 
 /**
  * @brief Camille Vector
@@ -37,9 +38,17 @@ template <typename VectorType>
 using CamilleVector = std::vector<VectorType>;
 
 /**
+ * @brief Camille Unordered Map
+ * @tparam Unordered Map Key Type
+ * @tparam Unordered Map Value Type
+ */
+template <typename Key, typename Value>
+using CamilleUnorderedMap = std::unordered_map<Key, Value>;
+
+/**
  * @brief Headers data structure
  */
-using CamilleHeaders = std::unordered_map<std::string, std::string>;
+using CamilleHeaders = CamilleUnorderedMap<std::string, std::string>;
 };  // namespace camille
 
 namespace http {
