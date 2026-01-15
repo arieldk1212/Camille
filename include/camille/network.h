@@ -49,7 +49,7 @@ class Session : public std::enable_shared_from_this<Session> {
             std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
         auto req = self_request_handler.Parse(std::string_view(data));
-        std::cout << req.method << " HERE!!! \n";
+        std::cout << req.Method() << " HERE!!! \n";
 
         // if (self->GetState()) {
         // std::println("{}", data);
