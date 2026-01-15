@@ -4,6 +4,7 @@
 #include "network.h"
 #include "pool.h"
 #include "logging.h"
+#include "benchmark.h"
 
 #include "asio/ip/address.hpp"
 
@@ -56,7 +57,14 @@ class Server {
 
       if (acceptor_.is_open()) {
         StartAccept();
-        CAMILLE_DEBUG("Acceptor is open for connetions");
+        {
+          /**
+           * @brief relation to logging test
+           * @todo remove benchmark after figuring it out
+           */
+          Benchmark here{"Log Test"};
+          CAMILLE_DEBUG("Acceptor is open for connetions");
+        }
       } else {
         CAMILLE_ERROR("Server error, acceptor is closed");
       }

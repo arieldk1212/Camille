@@ -1,6 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_PARSER_H_
 #define CAMILLE_INCLUDE_CAMILLE_PARSER_H_
 
+#include "camille/types.h"
 #include "error.h"
 
 #include <cstdint>
@@ -57,9 +58,10 @@ enum class States : std::uint8_t {
 
 constexpr static std::uint64_t kBodyLimit = 64 * 1024;  // 64k total, prob change
 
-using It = std::string_view::iterator;
-
 class Parser {
+ public:
+  using It = types::camille::CamilleStringViewIt;
+
  public:
   Parser() = default;
 
@@ -73,11 +75,17 @@ class Parser {
   static bool IsSpace(char sus) { return true ? sus == ' ' : false; }
 
   template <typename T>
-  bool ParseMethod(auto* pos, T& dtype) {
+  bool ParseMethod(auto pos, T& dtype) {
+    std::string method;
     while (*pos != ' ') {
-      dtype.method.push_back(*pos);
+      // dtype.method.push_back(*pos);
+      method.push_back(*pos);
       ++pos;
     }
+    /**
+     * @todo check it, whats better this or string_view
+     */
+    dtype.SetMethod(std::move(method));
     return true;
   }
 
@@ -91,7 +99,7 @@ class Parser {
       switch (std::get<States>(current_state_)) {
         case States::kReady:
           if (used_) {
-            return error::Errors::kStaleParser;
+            return std::unexpected(error::Errors::kStaleParser);
           }
           current_state_ = States::kMethod;
           break;

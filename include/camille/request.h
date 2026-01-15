@@ -6,7 +6,6 @@
 #include <string>
 
 namespace camille {
-
 namespace request {
 
 /**
@@ -30,6 +29,7 @@ class Request {
 
   [[nodiscard]] std::string_view Method() const { return method_; }
   void SetMethod(std::string_view method) { method_ = method; }
+  void SetMethod(std::string method) { method_ = std::move(method); }
 
   [[nodiscard]] const types::camille::CamilleHeaders& Headers() const { return headers_; }
   void AddHeader(std::string_view key, std::string_view value) {
