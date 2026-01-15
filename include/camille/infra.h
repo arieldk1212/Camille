@@ -62,13 +62,6 @@ static Methods MethodEnum(std::string_view method) {
   return Methods::kUnknown;
 }
 
-enum class NetworkError : std::uint8_t {
-  kTimeout,
-  kRemoteClosed,
-  kConnectionReset,
-  kQuotaExceeded
-};
-
 // TODO: need to fill the rest, change the name to the error itself
 enum class StatusCodes : std::uint16_t {
   HTTP_100 = 100,
@@ -78,59 +71,7 @@ enum class StatusCodes : std::uint16_t {
   HTTP_500 = 500
 };
 
-namespace headers {
-
-class Headers {
- public:
-  Headers();
-
-  bool AddHeader(const std::string& name, const std::string& value);
-
- private:
-  types::camille::CamilleHeaders headers_;
-};
-
-class TypeHeaders {
- public:
-  virtual ~TypeHeaders() = default;
-
-  virtual bool MatchToType() = 0;
-};
-
-class RequestHeaders : public TypeHeaders {
- public:
-  RequestHeaders();
-
-  bool MatchToType() override;
-
- private:
-  Headers headers_;
-  std::string request_line_;
-};
-
-class ResponseHeaders : public TypeHeaders {
- public:
-  ResponseHeaders();
-
-  bool MatchToType() override;
-
- private:
-  Headers headers_;
-  std::string response_line_;
-};
-
-};  // namespace headers
-
-namespace uri {
-
-class Uri {};
-
-class Url {};
-
-};  // namespace uri
-
 };  // namespace infra
-
 };  // namespace camille
 
 #endif
