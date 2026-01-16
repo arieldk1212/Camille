@@ -40,16 +40,19 @@ class Session : public std::enable_shared_from_this<Session> {
         : self(std::move(ptr)),
           self_request_handler(request_handler) {}
 
-    void operator()(const std::error_code& error_code, std::size_t bytes) {
+    void operator()(const std::error_code& error_code, size_t bytes) {
       if (!error_code) {
         asio::streambuf::const_buffers_type buffer = self->stream_buffer_.data();
 
-        std::string data(
-            asio::buffers_begin(buffer),
-            std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
+        std::string_view data(static_cast<const char*>(buffer.data()),
+                              static_cast<std::ptrdiff_t>(bytes));
 
-        auto req = self_request_handler.Parse(std::string_view(data));
-        // std::cout << req.Method() << " HERE!!! \n";
+        // std::string data(
+        //     asio::buffers_begin(buffer),
+        //     std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
+
+        auto req = self_request_handler.Parse(data);
+        CAMILLE_DEBUG("Method: {}", req.Method());
 
         // if (self->GetState()) {
         // std::println("{}", data);
@@ -75,7 +78,7 @@ class Session : public std::enable_shared_from_this<Session> {
           to_consume(consume),
           self_response_handler(response_handler) {}
 
-    void operator()(const std::error_code& error_code, std::size_t) const {
+    void operator()(const std::error_code& error_code, size_t) const {
       if (!error_code) {
         self->stream_buffer_.consume(to_consume);
         self->DoRead();

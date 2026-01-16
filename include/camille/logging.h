@@ -6,27 +6,27 @@
 #include <print>
 #include <chrono>
 #include <format>
+
 /**
  * @brief Camille Logging Functionality
  * @todo maybe just use spdlog async logger?
  */
 
 namespace camille {
-
 namespace logger {
 
-constexpr std::string_view TrimPath(std::string_view path) {
+static constexpr std::string_view TrimPath(std::string_view path) {
   /**
    * @brief Finding the shortest preferred human-read path.
-   * @todo test it, benchmark, fix frozen terminal..
    */
-  using It = std::string_view::const_iterator;
+  using It = types::camille::CamilleStringViewIt;
+  using CIt = const It;
 
   It last = path.cbegin();
   It second_last = path.cend();
-  const It end = path.cend();
+  CIt end = path.cend();
 
-  for (It pos = last; pos != end; ++pos) {
+  for (It pos{last}; pos != end; ++pos) {
     if (*pos == '/' || *pos == '\\') {
       second_last = last;
       last = pos + 1;
@@ -36,29 +36,18 @@ constexpr std::string_view TrimPath(std::string_view path) {
   if (second_last == path.cend()) {
     return path;
   }
-
   return path.substr(std::distance(path.cbegin(), second_last));
-
-  // size_t last_slash = path.find_last_of("/\\");
-  // if (last_slash == std::string_view::npos) return path;
-
-  // // Logic to get the "second to last" part if that's your goal:
-  // std::string_view prefix = path.substr(0, last_slash);
-  // size_t second_last_slash = prefix.find_last_of("/\\");
-
-  // if (second_last_slash == std::string_view::npos) return path;
-  // return path.substr(second_last_slash + 1);
 }
 
 /**
- * @brief Core logging logic, version 23 only
+ * @brief Core logging logic
  * @todo should maybe "downgrade" into cout?
- * @tparam Args
+ * @version 23
  * @param level
  * @param file
  * @param line
  * @param message
- * @param args
+ * @tparam Args (args)
  */
 template <typename... Args>
 inline void InternalLog(std::string_view level,

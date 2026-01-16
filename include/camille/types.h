@@ -51,6 +51,11 @@ using CamilleUnorderedMap = std::unordered_map<Key, Value>;
 using CamilleHeaders = CamilleVector<std::pair<std::string, std::string>>;
 
 /**
+ * @brief Headers data structure string_view
+ */
+using CamilleViewHeaders = CamilleVector<std::pair<std::string_view, std::string_view>>;
+
+/**
  * @brief String view iterator
  */
 using CamilleStringViewIt = std::string_view::iterator;

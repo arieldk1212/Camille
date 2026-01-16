@@ -18,11 +18,12 @@ class RequestHandler : public Handler {
  public:
   RequestHandler() = default;
 
-  request::Request Parse(std::string_view data) {
-    parser_.Parse<request::Request>(data);
+  const request::Request& Parse(std::string_view data) {
+    auto req = parser_.Parse<request::Request>(data);
     if (!parser_) {
       CAMILLE_ERROR("request parsing error");
     }
+    request_ = req.value();
     return request_;
   }
 
@@ -35,11 +36,12 @@ class ResponseHandler : public Handler {
  public:
   ResponseHandler() = default;
 
-  response::Response Parse(std::string_view data) {
+  const response::Response& Parse(std::string_view data) {
+    auto res = parser_.Parse<response::Response>(data);
     if (!parser_) {
       CAMILLE_ERROR("response parsing error");
     }
-    parser_.Parse<response::Response>(data);
+    response_ = res.value();
     return response_;
   }
 
