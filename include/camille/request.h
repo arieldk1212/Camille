@@ -2,11 +2,11 @@
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
 #include "types.h"
+#include "logging.h"
 
 #include <string>
 
 namespace camille {
-
 namespace request {
 
 /**
@@ -31,9 +31,9 @@ class Request {
   [[nodiscard]] std::string_view Method() const { return method_; }
   void SetMethod(std::string_view method) { method_ = method; }
 
-  [[nodiscard]] const types::camille::CamilleHeaders& Headers() const { return headers_; }
+  [[nodiscard]] const types::camille::CamilleViewHeaders& Headers() const { return headers_; }
   void AddHeader(std::string_view key, std::string_view value) {
-    headers_.emplace_back(std::string(key), std::string(value));
+    headers_.emplace_back(key, value);
   }
 
   [[nodiscard]] bool Auth() const { return has_auth_; }
@@ -44,12 +44,12 @@ class Request {
   void AddSize(size_t size) { request_size_ += size; }
 
  private:
-  std::string host_;
-  std::string port_;
-  std::string path_;
-  std::string body_;
-  std::string method_;
-  types::camille::CamilleHeaders headers_;
+  std::string_view host_;
+  std::string_view port_;
+  std::string_view path_;
+  std::string_view body_;
+  std::string_view method_;
+  types::camille::CamilleViewHeaders headers_;
 
   bool has_auth_{false};
   size_t request_size_{0};

@@ -1,9 +1,10 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_LOGGING_H_
 #define CAMILLE_INCLUDE_CAMILLE_LOGGING_H_
 
+#include "types.h"
+
 #include <print>
 #include <chrono>
-#include <iostream>
 #include <format>
 
 /**
@@ -11,32 +12,42 @@
  * @todo maybe just use spdlog async logger?
  */
 
+namespace camille {
 namespace logger {
 
-constexpr const char* TrimPath(const char* path) {
+static constexpr std::string_view TrimPath(std::string_view path) {
   /**
-   * @brief sliding window algo for finding the shortened path
+   * @brief Finding the shortest preferred human-read path.
    */
-  const char* last = path;
-  const char* second_last = path;
-  for (const char* pos = path; *pos; ++pos) {
+  using It = types::camille::CamilleStringViewIt;
+  using CIt = const It;
+
+  It last = path.cbegin();
+  It second_last = path.cend();
+  CIt end = path.cend();
+
+  for (It pos{last}; pos != end; ++pos) {
     if (*pos == '/' || *pos == '\\') {
       second_last = last;
       last = pos + 1;
     }
   }
-  return (second_last == path) ? last : second_last;
+
+  if (second_last == path.cend()) {
+    return path;
+  }
+  return path.substr(std::distance(path.cbegin(), second_last));
 }
 
 /**
- * @brief Core logging logic, version 23 only
+ * @brief Core logging logic
  * @todo should maybe "downgrade" into cout?
- * @tparam Args
+ * @version 23
  * @param level
  * @param file
  * @param line
  * @param message
- * @param args
+ * @tparam Args (args)
  */
 template <typename... Args>
 inline void InternalLog(std::string_view level,
@@ -51,26 +62,29 @@ inline void InternalLog(std::string_view level,
   //           << "[" << file << ":" << line << "] " << formatted_message << "\n";
 }
 
-#define CAMILLE(message, ...) \
-  logger::InternalLog("CAMILLE", logger::TrimPath(__FILE__), __LINE__, message, ##__VA_ARGS__)
-#define CAMILLE_TRACE(message, ...)                                                          \
-  logger::InternalLog("\033[32mTRACE\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
-                      ##__VA_ARGS__)
-#define CAMILLE_DEBUG(message, ...)                                                          \
-  logger::InternalLog("\033[36mDEBUG\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
-                      ##__VA_ARGS__)
-#define CAMILLE_INFO(message, ...) \
-  logger::InternalLog("INFO", logger::TrimPath(__FILE__), __LINE__, message, ##__VA_ARGS__)
-#define CAMILLE_WARNING(message, ...)                                                          \
-  logger::InternalLog("\033[33mWARNING\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
-                      ##__VA_ARGS__)
-#define CAMILLE_ERROR(message, ...)                                                          \
-  logger::InternalLog("\033[31mERROR\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
-                      ##__VA_ARGS__)
-#define CAMILLE_CRITICAL(message, ...)                                                          \
-  logger::InternalLog("\033[35mCRITICAL\033[0m", logger::TrimPath(__FILE__), __LINE__, message, \
-                      ##__VA_ARGS__)
+#define CAMILLE(message, ...)                                                                     \
+  camille::logger::InternalLog("CAMILLE", camille::logger::TrimPath(__FILE__), __LINE__, message, \
+                               ##__VA_ARGS__)
+#define CAMILLE_TRACE(message, ...)                                                         \
+  camille::logger::InternalLog("\033[32mTRACE\033[0m", camille::logger::TrimPath(__FILE__), \
+                               __LINE__, message, ##__VA_ARGS__)
+#define CAMILLE_DEBUG(message, ...)                                                         \
+  camille::logger::InternalLog("\033[36mDEBUG\033[0m", camille::logger::TrimPath(__FILE__), \
+                               __LINE__, message, ##__VA_ARGS__)
+#define CAMILLE_INFO(message, ...)                                                             \
+  camille::logger::InternalLog("INFO", camille::logger::TrimPath(__FILE__), __LINE__, message, \
+                               ##__VA_ARGS__)
+#define CAMILLE_WARNING(message, ...)                                                         \
+  camille::logger::InternalLog("\033[33mWARNING\033[0m", camille::logger::TrimPath(__FILE__), \
+                               __LINE__, message, ##__VA_ARGS__)
+#define CAMILLE_ERROR(message, ...)                                                         \
+  camille::logger::InternalLog("\033[31mERROR\033[0m", camille::logger::TrimPath(__FILE__), \
+                               __LINE__, message, ##__VA_ARGS__)
+#define CAMILLE_CRITICAL(message, ...)                                                         \
+  camille::logger::InternalLog("\033[35mCRITICAL\033[0m", camille::logger::TrimPath(__FILE__), \
+                               __LINE__, message, ##__VA_ARGS__)
 
 };  // namespace logger
+};  // namespace camille
 
 #endif
