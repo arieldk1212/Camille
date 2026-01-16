@@ -2,32 +2,27 @@
 #define CAMILLE_INCLUDE_CAMILLE_PARSER_H_
 
 #include "benchmark.h"
+#include "infra.h"
+#include "logging.h"
 #include "types.h"
 #include "concepts.h"
 #include "error.h"
 
 #include <cstdint>
 #include <expected>
-#include <iterator>
 #include <string_view>
-#include <variant>
 
 /**
- * @ref request smuggling
- * always add body and be willing to accept one.
- * interact from front and back with the same http version.
- * throw error on exception, dont continue.
-
 * @example
-  GET / HTTP/1.1
-  Host: 127.0.0.1:8085
-  Connection: keep-alive
-  sec-ch-ua: "Brave";v="143", "Chromium";v="143", "Not A(Brand";v="24"
+  GET / HTTP/1.1\r\n
+  Host: 127.0.0.1:8085\r\n
+  Connection: keep-alive\r\n
+  sec-ch-ua: "Brave";v="143", "tokenomium";v="143", "Not A(Brand";v="24"
   sec-ch-ua-mobile: ?0
   sec-ch-ua-platform: "macOS"
   Upgrade-Insecure-Requests: 1
   User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like
-Gecko) Chrome/143.0.0.0 Safari/537.36 Accept:
+Gecko) tokenome/143.0.0.0 Safari/537.36 Accept:
   text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/
 /*;q=0.8
 Sec-GPC: 1
@@ -38,11 +33,26 @@ Sec-Fetch-User: ?1
 Sec-Fetch-Dest: document
 Accept-Encoding: gzip, deflate, br, zstd
 
-Rule 1: If a request has both Content-Length and Transfer-Encoding, the spec says you must
+For validation:
+1. Must check if a char is a control char (ASCII 0-31, 127).
+2. Allow alphanumeric a-z, A-Z, 0-9.
+3. Method and headers allow symbols !#$%&'*+-.^_`|~, Forbidden: @:/[] and other
+4. URI: Reserved (?#&=), Unreserved (-._~), Percent Encoding (% followed by exactly two hex decimal
+digits).
+5. OWS(Opt White Space): No whitespace allowed between the key and the colon, leading and trailing
+whitespace sohuld be identified so they can be trimmed, vertical tabs and form feeds should usually
+be rejected as garbage.
+6. A line must end with \r\n, Full request ends with \r\n\r\n.
+7. Header values must be in range of 32-126, or extended if support is on for internatiolized
+headers.
+8. Content-Length and Status Code must be 0-9 digit only!
+9. If a request has both Content-Length and Transfer-Encoding, the spec says you must
 prioritize Transfer-Encoding or throw a 400 error.
-
-Rule 2: If Content-Length is invalid (e.g., 123, 456), you must throw an error. Never "guess" which
+10. If Content-Length is invalid (e.g., 123, 456), you must throw an error. Never "guess" which
 length is correct.
+11. Always add body and be willing to accept one.
+12. Interact from front and back with the same http version.
+13. Request Smuggling prevention.
 
 */
 namespace camille {
@@ -51,16 +61,12 @@ namespace parser {
 enum class States : std::uint8_t {
   kReady,
   // kWait,
-
   kMethod,
-  // kUri,
+  kUri,
   // kVersion,
-
   // kKey,
   // kValue,
-
   // kBody,
-
   kComplete,
   kGarbage
 };
@@ -82,18 +88,35 @@ class Parser {
 
   explicit operator bool() const { return current_state_ == States::kComplete; }
 
-  static constexpr bool IsSpace(char chr) { return chr == ' ' || chr == '\t'; }
+  static constexpr bool IsSpace(char token) { return token == ' ' || token == '\t'; }
+  static constexpr bool IsSpecial(char token) {
+    switch (token) {
+      // case '{':
+      //   return '{';
+    }
+  }
 
   void SetUsed(bool used) { used_ = used; }
   [[nodiscard]] bool IsEmpty() const { return rocky_.begin == rocky_.end; }
 
   template <concepts::IsReqResType T>
-  bool ParseMethod(auto& pos, T& dtype) {
+  static bool ParseMethod(auto& pos, T& dtype) {
+    CAMILLE_DEBUG("Parse Method Executed");
     auto begin = pos;
     while (!IsSpace(*pos)) {
       ++pos;
     }
-    dtype.SetMethod(std::string_view(begin, pos - begin));
+    std::string_view method(begin, pos - begin);
+    if (infra::MethodEnum(method) == infra::Methods::kUnknown) {
+      return false;
+    }
+
+    dtype.SetMethod(method);
+    return true;
+  }
+
+  static bool ParseUri() {
+    CAMILLE_DEBUG("Parse Uri Executed");
     return true;
   }
 
@@ -117,9 +140,15 @@ class Parser {
           if (!ParseMethod(rocky_.begin, dtype)) {
             current_state_ = States::kGarbage;
           } else {
-            current_state_ = States::kComplete;  // state == uri
+            current_state_ = States::kUri;  // state == uri
           }
           break;
+
+        case States::kUri:
+          if (IsSpace(*rocky_.begin)) {
+            ++rocky_.begin;
+          } else {
+          }
 
         case States::kComplete:
           SetUsed(true);
