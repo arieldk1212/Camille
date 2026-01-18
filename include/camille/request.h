@@ -2,9 +2,6 @@
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
 #include "types.h"
-#include "logging.h"
-
-#include <string>
 
 namespace camille {
 namespace request {

@@ -7,15 +7,18 @@ namespace camille {
 namespace error {
 
 enum class Errors : std::uint8_t {
+  kGeneralError,
+  kBadMethod,
+  kBadUri,
+  kBadRequest,
+  kStaleParser,  // Parser was already used (one parser per transaction).
   kEndOfStream,
   kSizeLimit,
   kBodyLimit,
-  kBadRequest,
   kBufferOverflow,
   kPartialMessage,
   kShortRead,
-  kStaleParser,  // Parser was already used (one parser per transaction).
-  kGarbageRequest
+  kGarbageRequest,
 };
 
 enum class NetworkError : std::uint8_t {

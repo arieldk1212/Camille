@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <map>
 #include <string_view>
 
 /**
@@ -60,10 +61,11 @@ namespace parser {
 
 enum class States : std::uint8_t {
   kReady,
-  // kWait,
   kMethod,
+  kWaitUri,
+  kUriStart,
   kUri,
-  // kVersion,
+  kVersion,
   // kKey,
   // kValue,
   // kBody,
@@ -71,7 +73,30 @@ enum class States : std::uint8_t {
   kGarbage
 };
 
-constexpr static std::uint64_t kBodyLimit = 64 * 1024;  // 64k total, prob change
+static constexpr std::uint64_t kBodyLimit = 64 * 1024;  // 64k total, prob change
+
+/**
+ * @brief Lookup map
+ * @todo Implement or ignore
+ */
+[[maybe_unused]] static const std::map<unsigned char, unsigned char> kBitmap;
+
+static constexpr bool IsSpace(char token) { return token == ' ' || token == '\t'; }
+static constexpr bool IsDigit(char token) { return (token >= '0' && token <= '9'); }
+static constexpr bool IsLower(char token) {
+  return (static_cast<unsigned char>(token) >= 'a' && static_cast<unsigned char>(token) <= 'z');
+}
+static constexpr bool IsUpper(char token) {
+  return (static_cast<unsigned char>(token) >= 'A' && static_cast<unsigned char>(token) <= 'Z');
+}
+static constexpr bool IsChar(char token) { return token >= 0 && token <= 127; }
+static constexpr bool IsControl(char token) {
+  return (token >= 0 && token <= 31) || (token == 127);
+}
+static constexpr bool IsFormFeed(char token) { return token == 0x0C; }
+static constexpr bool IsCR(char token) { return token == 0x0D; }
+static constexpr bool IsLF(char token) { return token == 0x0A; }
+static constexpr bool IsCRLF(std::string_view token) { return token == "\r\n\r\n"; }
 
 class Parser {
  public:
@@ -88,35 +113,36 @@ class Parser {
 
   explicit operator bool() const { return current_state_ == States::kComplete; }
 
-  static constexpr bool IsSpace(char token) { return token == ' ' || token == '\t'; }
-  static constexpr bool IsSpecial(char token) {
-    switch (token) {
-      // case '{':
-      //   return '{';
-    }
-  }
-
   void SetUsed(bool used) { used_ = used; }
   [[nodiscard]] bool IsEmpty() const { return rocky_.begin == rocky_.end; }
 
   template <concepts::IsReqResType T>
   static bool ParseMethod(auto& pos, T& dtype) {
-    CAMILLE_DEBUG("Parse Method Executed");
     auto begin = pos;
-    while (!IsSpace(*pos)) {
+    while (!IsSpace(*pos) || !IsLower(*pos)) {
       ++pos;
     }
     std::string_view method(begin, pos - begin);
     if (infra::MethodEnum(method) == infra::Methods::kUnknown) {
       return false;
     }
-
     dtype.SetMethod(method);
     return true;
   }
 
-  static bool ParseUri() {
+  template <concepts::IsReqResType T>
+  static bool ParseUri(auto& pos, T& dtype) {
     CAMILLE_DEBUG("Parse Uri Executed");
+    auto begin = pos;
+    if (!(*begin) == '/') {
+      return false;
+    }
+
+    while (!IsSpace(*pos)) {
+      if () }
+
+    std::string_view path(begin, pos - begin);
+    dtype.SetPath(path);
     return true;
   }
 
@@ -138,35 +164,63 @@ class Parser {
 
         case States::kMethod:
           if (!ParseMethod(rocky_.begin, dtype)) {
+            error_ = error::Errors::kBadMethod;
             current_state_ = States::kGarbage;
           } else {
-            current_state_ = States::kUri;  // state == uri
+            current_state_ = States::kWaitUri;
+          }
+          break;
+
+        case States::kWaitUri:
+          if (IsSpace(*rocky_.begin)) {
+            ++rocky_.begin;
+            current_state_ = States::kUriStart;
+          } else {
+            error_ = error::Errors::kBadRequest;
+            current_state_ = States::kGarbage;
+          }
+          break;
+
+        case States::kUriStart:
+          if (*rocky_.begin == '/') {
+            current_state_ = States::kUri;
+          } else {
+            error_ = error::Errors::kBadUri;
+            current_state_ = States::kGarbage;
           }
           break;
 
         case States::kUri:
-          if (IsSpace(*rocky_.begin)) {
-            ++rocky_.begin;
+          if (!ParseUri(rocky_.begin, dtype)) {
+            error_ = error::Errors::kBadUri;
+            current_state_ = States::kGarbage;
           } else {
+            current_state_ = States::kVersion;
           }
+          break;
+
+        case States::kVersion:
+
+          break;
 
         case States::kComplete:
           SetUsed(true);
           // if (!IsEmpty()) {
           //   return std::unexpected(error::Errors::kStaleParser);
           // }
+          // dtype.SetSize(total_consumed_);
           return dtype;
           break;
 
         case States::kGarbage:
-          return std::unexpected(error::Errors::kGarbageRequest);
+          return std::unexpected(error_);
           break;
 
         default:
-          return std::unexpected(error::Errors::kGarbageRequest);
+          return std::unexpected(error::Errors::kGeneralError);
       }
     }
-    return std::unexpected(error::Errors::kGarbageRequest);
+    return std::unexpected(error_);
   }
 
  private:
@@ -175,6 +229,7 @@ class Parser {
   size_t total_consumed_{0};
   size_t data_limit_{kBodyLimit};
   States current_state_{States::kReady};
+  error::Errors error_{error::Errors::kGeneralError};
 };
 
 };  // namespace parser
