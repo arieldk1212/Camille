@@ -31,7 +31,7 @@ static const types::camille::CamilleUnorderedMap<Methods, std::string_view> Meth
 
 static constexpr std::string_view MethodString(Methods method) { return MethodRep.at(method); }
 
-static Methods MethodEnum(std::string_view method) {
+static constexpr Methods MethodEnum(std::string_view method) {
   if (method == "GET") {
     return Methods::kGet;
   }
