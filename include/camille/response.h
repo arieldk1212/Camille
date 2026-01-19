@@ -1,7 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_RESPONSE_H_
 #define CAMILLE_INCLUDE_CAMILLE_RESPONSE_H_
 
-#include <string>
+#include <string_view>
 
 namespace camille {
 namespace response {

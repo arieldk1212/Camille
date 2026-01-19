@@ -23,7 +23,7 @@ template <typename T>
 concept IsReqResType = requires(T val, std::string_view data) {
   {val.SetMethod(data)}->std::same_as<void>;
   // {val.SetPort()}->std::same_as<void>;
-  {val.SetPath()}->std::same_as<void>;
+  {val.SetPath(data)}->std::same_as<void>;
   // {val.SetHost()}->std::same_as<void>;
 };
 

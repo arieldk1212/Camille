@@ -134,12 +134,12 @@ class Parser {
   static bool ParseUri(auto& pos, T& dtype) {
     CAMILLE_DEBUG("Parse Uri Executed");
     auto begin = pos;
-    if (!(*begin) == '/') {
+    if (*begin != '/') {
       return false;
     }
 
-    while (!IsSpace(*pos)) {
-      if () }
+    // while (!IsSpace(*pos)) {
+    //   if () }
 
     std::string_view path(begin, pos - begin);
     dtype.SetPath(path);
