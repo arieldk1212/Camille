@@ -16,9 +16,13 @@ class Response {
   [[nodiscard]] std::string_view Path() const { return path_; }
   void SetPath(std::string_view path) { path_ = path; }
 
+  [[nodiscard]] std::string_view Version() const { return version_; }
+  void SetVersion(std::string_view version) { version_ = version; }
+
  private:
-  std::string_view method_;
   std::string_view path_;
+  std::string_view method_;
+  std::string_view version_;
 };
 
 };  // namespace response

@@ -53,6 +53,8 @@ class Session : public std::enable_shared_from_this<Session> {
 
         auto req = self_request_handler.Parse(data);
         CAMILLE_DEBUG("Method: {}", req.Method());
+        CAMILLE_DEBUG("Uri: {}", req.Path());
+        CAMILLE_DEBUG("Verison: {}", req.Version());
 
         // if (self->GetState()) {
         // std::println("{}", data);

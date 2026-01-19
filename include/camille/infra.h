@@ -3,8 +3,6 @@
 
 #include "types.h"
 
-#include <string>
-
 namespace camille {
 
 namespace infra {
