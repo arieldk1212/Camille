@@ -9,6 +9,8 @@
 #include "error.h"
 
 #include <cstdint>
+#include <list>
+#include <array>
 #include <expected>
 #include <map>
 #include <string_view>
@@ -47,20 +49,21 @@ enum class States : std::uint8_t {
   kUri,
   kWaitVersion,
   kVersion,
-  // kKey,
-  // kValue,
+  kHeadersWait,
+  kKey,
+  kValue,
   // kBody,
   kComplete,
   kGarbage
 };
 
+static constexpr std::uint64_t kTableLimit = 256;
 static constexpr std::uint64_t kBodyLimit = 64 * 1024;  // 64k total, prob change
 
 /**
  * @brief Lookup map
  * @todo Decide on the implementation
  */
-[[maybe_unused]] static const std::map<unsigned char, unsigned char> kBitmap;
 
 static constexpr bool IsSpace(char token) { return token == ' ' || token == '\t'; }
 static constexpr bool IsDigit(char token) { return (token >= '0' && token <= '9'); }
@@ -75,51 +78,6 @@ static constexpr bool IsControl(char token) {
   return (token >= 0 && token <= 31) || (token == 127);
 }
 static constexpr bool IsSlash(char token) { return token == '/'; }
-static constexpr bool IsReserved(char token) {
-  switch (token) {
-    case '?':
-    case '#':
-    case '&':
-    case '=':
-      return true;
-    default:
-      return false;
-  }
-}
-static constexpr bool IsUnreserved(char token) {
-  switch (token) {
-    case '-':
-    case '.':
-    case '_':
-    case '~':
-      return true;
-    default:
-      return false;
-  }
-}
-static constexpr bool IsHeaderSymbol(char token) {
-  switch (token) {
-    case '!':
-    case '#':
-    case '$':
-    case '%':
-    case '&':
-    case '\'':
-    case '*':
-    case '+':
-    case '-':
-    case '.':
-    case '^':
-    case '_':
-    case '`':
-    case '|':
-    case '~':
-    case ',':
-      return true;
-    default:
-      return false;
-  }
-}
 static constexpr bool IsOWS(char token) {
   return static_cast<bool>(std::isspace(static_cast<unsigned char>(token)));
 }
@@ -130,7 +88,72 @@ static constexpr bool IsCRLF(std::string_view token) { return token == "\r\n\r\n
 
 class Parser {
  public:
+  struct CommonSymbolRequirement {
+    static constexpr auto placements = []() {
+      std::array<char, 33> arr{};
+      for (char c{0}; c <= 31; ++c) {
+        arr.at(c) = c;
+      }
+      arr[32] = 127;
+      return arr;
+    }();
+  };
+  struct AlphaNumericRequirement {
+    static constexpr auto placements = []() {
+      std::array<char, 62> arr{};
+      size_t i = 0;
+      for (char c = '0'; c <= '9'; ++c) {
+        arr[i++] = c;
+      }
+      for (char c = 'A'; c <= 'Z'; ++c) {
+        arr[i++] = c;
+      }
+      for (char c = 'a'; c <= 'z'; ++c) {
+        arr[i++] = c;
+      }
+      return arr;
+    }();
+  };
+  struct HeaderSymbolRequirement {
+    static constexpr std::array<char, 16> placements{'!', '#', '$', '%', '&', '\'', '*', '+',
+                                                     ',', '-', '.', '^', '_', '`',  '|', '~'};
+  };
+  struct ReservedSymbolRequirement {
+    static constexpr std::array<char, 4> placements{'#', '&', '=', '?'};
+  };
+  struct UnreservedSymbolRequirement {
+    static constexpr std::array<char, 4> placements{'-', '.', '_', '~'};
+  };
+
+  /**
+   * @brief Responsible for validating a certain token in the specific use-case.
+   * @tparam requirements (concept that checks for 'placements' array inside, holding the symbols as
+   * decimals)
+   */
+  template <concepts::SymbolRequirement... requirements>
+  struct ParserTraits {
+    static constexpr std::array<char, 256> kLookup = []() consteval {
+      std::array<char, kTableLimit> table{};
+      (
+          [&]() {
+            for (auto token : requirements::placements) {
+              table[static_cast<unsigned char>(token)] = token;
+            }
+          }(),
+          ...);
+      return table;
+    }();
+
+    template <std::same_as<char> T>
+    static constexpr bool IsValid(T token) {
+      return kLookup[static_cast<unsigned char>(token)];
+    }
+  };
+
   using It = types::camille::CamilleStringViewIt;
+  using UriTraits = ParserTraits<UnreservedSymbolRequirement, ReservedSymbolRequirement>;
+  using HeaderTraits =
+      ParserTraits<CommonSymbolRequirement, HeaderSymbolRequirement, AlphaNumericRequirement>;
 
   struct Rocky {
     It begin;
@@ -145,6 +168,7 @@ class Parser {
 
   void SetUsed(bool used) { used_ = used; }
   [[nodiscard]] bool IsEmpty() const { return rocky_.begin == rocky_.end; }
+  [[nodiscard]] std::uint8_t GetErrorCode() const { return static_cast<std::uint8_t>(error_); }
 
   template <concepts::IsReqResType T>
   static bool ParseMethod(auto& pos, T& dtype) {
@@ -166,11 +190,10 @@ class Parser {
     if (!IsSlash(*pos)) {
       return false;
     }
-    // advance pos by 1 after /
     ++pos;
 
     while (!IsSpace(*pos)) {
-      if (!IsChar(*pos) || !IsReserved(*pos) || !IsUnreserved(*pos) || !IsSlash(*pos)) {
+      if (!IsChar(*pos) && !UriTraits::IsValid(*pos) && !IsSlash(*pos)) {
         return false;
       }
       ++pos;
@@ -196,14 +219,19 @@ class Parser {
     }
     ++pos;
     while (!IsCR(*pos)) {
-      if (!IsDigit(*pos) || !IsUnreserved(*pos)) {
+      if (!IsDigit(*pos) && *pos != '.') {
         return false;
       }
       ++pos;
     }
-
+    ++pos;  // now at \n
     std::string_view version(begin, pos - begin);
     dtype.SetVersion(version);
+    return true;
+  }
+
+  template <concepts::IsReqResType T>
+  static bool ParseHeaders(auto& pos, T& dtype) {
     return true;
   }
 
@@ -275,9 +303,27 @@ class Parser {
             error_ = error::Errors::kBadVersion;
             current_state_ = States::kGarbage;
           } else {
+            current_state_ = States::kHeadersWait;
+          }
+          break;
+
+        case States::kHeadersWait:
+          if (IsLF(*rocky_.begin)) {
+            ++rocky_.begin;
+            current_state_ = States::kKey;
+          } else {
+            error_ = error::Errors::kPartialMessage;
+            current_state_ = States::kGarbage;
+          }
+          break;
+
+        case States::kKey:
+          if (!ParseHeaders(rocky_.begin, dtype)) {
+            error_ = error::Errors::kBadKey;
+            current_state_ = States::kGarbage;
+          } else {
             current_state_ = States::kComplete;
           }
-
           break;
 
         case States::kComplete:

@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <string_view>
+#include <span>
 
 namespace camille {
 namespace concepts {
@@ -26,6 +27,11 @@ concept IsReqResType = requires(T val, std::string_view data) {
   {val.SetVersion(data)}->std::same_as<void>;
   // {val.SetPort()}->std::same_as<void>;
   // {val.SetHost()}->std::same_as<void>;
+};
+
+template <typename T>
+concept SymbolRequirement = requires() {
+  {T::placements}->std::convertible_to<std::span<const char>>;
 };
 
 };  // namespace concepts

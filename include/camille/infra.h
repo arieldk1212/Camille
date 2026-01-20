@@ -7,6 +7,12 @@ namespace camille {
 
 namespace infra {
 
+enum class Headers : std::uint8_t {
+  /**
+   * @brief helps to validate when we parse header key.
+   */
+};
+
 enum class Methods : std::uint8_t {
   kGet,
   kHead,

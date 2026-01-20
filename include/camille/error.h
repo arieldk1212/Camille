@@ -13,6 +13,8 @@ enum class Errors : std::uint8_t {
   kBadRequest,
   kStaleParser,  // Parser was already used (one parser per transaction).
   kBadVersion,   // could be due to mismatch between applications or wrong version.
+  kBadKey,
+  kBadHeader,
   kEndOfStream,
   kSizeLimit,
   kBodyLimit,
