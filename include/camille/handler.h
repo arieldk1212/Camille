@@ -21,7 +21,8 @@ class RequestHandler : public Handler {
   const request::Request& Parse(std::string_view data) {
     auto req = parser_.Parse<request::Request>(data);
     if (!parser_) {
-      CAMILLE_ERROR("request parsing error, {}", parser_.GetErrorCode());
+      CAMILLE_ERROR("request parsing error - {}: ecode: {}", parser_.GetErrorString(),
+                    parser_.GetErrorCode());
     }
     request_ = req.value();
     return request_;
@@ -39,7 +40,8 @@ class ResponseHandler : public Handler {
   const response::Response& Parse(std::string_view data) {
     auto res = parser_.Parse<response::Response>(data);
     if (!parser_) {
-      CAMILLE_ERROR("response parsing error, {}", parser_.GetErrorCode());
+      CAMILLE_ERROR("response parsing error - {}: ecode: {}", parser_.GetErrorString(),
+                    parser_.GetErrorCode());
     }
     response_ = res.value();
     return response_;

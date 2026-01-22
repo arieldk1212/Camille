@@ -52,6 +52,8 @@ class Server {
     acceptor_.async_accept(*new_socket, [this, new_socket](const std::error_code& error_code) {
       if (!error_code) {
         std::make_shared<network::Session>(new_socket, state_)->Start();
+      } else {
+        CAMILLE_CRITICAL("Async Accept Error, {}", error_code.message());
       }
 
       if (acceptor_.is_open()) {

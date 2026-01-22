@@ -27,7 +27,7 @@ namespace camille {
 namespace request {
 
 /**
- * @todo add some sort of validation of the methods enum
+ * @todo method to extract request into a const data struct.
  */
 class Request {
  public:

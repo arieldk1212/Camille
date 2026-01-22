@@ -1,17 +1,37 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 #define CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 
-#include "types.h"
+#include <string>
 
 namespace camille {
 
 namespace infra {
 
-enum class Headers : std::uint8_t {
-  /**
-   * @brief helps to validate when we parse header key.
-   */
-};
+namespace headers {
+static constexpr std::string kConnection = "Connection";
+static constexpr std::string kHost = "Host";
+static constexpr std::string kContentLength = "Content-Length";
+static constexpr std::string kContentType = "Content-Type";
+static constexpr std::string kUserAgent = "User-Agent";
+static constexpr std::string kSecCHUA = "Sec-CH-UA";
+static constexpr std::string kAccept = "Accept";
+static constexpr std::string kAcceptEncoding = "Accept-Encoding";
+static constexpr std::string kAcceptLanguage = "Accept-Language";
+static constexpr std::string kReferer = "Referer";
+static constexpr std::string kAuthorization = "Authorization";
+static constexpr std::string kCacheControl = "Cache-Control";
+static constexpr std::string kCookie = "Cookie";
+static constexpr std::string Date = "Date";
+static constexpr std::string Expect = "Expect";
+static constexpr std::string IfMatch = "If-Match";
+static constexpr std::string IfNoneMatch = "If-None-Match";
+static constexpr std::string IfModifiedSince = "If-Modified-Since";
+static constexpr std::string Origin = "Origin";
+static constexpr std::string Range = "Range";
+static constexpr std::string TransferEncoding = "Transfer-Encoding";
+static constexpr std::string Upgrade = "Upgrade";
+static constexpr std::string XForwardedFor = "X-Forwarded-For";
+};  // namespace headers
 
 enum class Methods : std::uint8_t {
   kGet,
@@ -26,16 +46,10 @@ enum class Methods : std::uint8_t {
   kUnknown
 };
 
-static const types::camille::CamilleUnorderedMap<Methods, std::string_view> MethodRep{
-    {Methods::kGet, "GET"},         {Methods::kHead, "HEAD"},       {Methods::kPost, "POST"},
-    {Methods::kPatch, "PATCH"},     {Methods::kPut, "PUT"},         {Methods::kDelete, "DELETE"},
-    {Methods::kOptions, "OPTIONS"}, {Methods::kConnect, "CONNECT"}, {Methods::kTrace, "TRACE"},
-    {Methods::kUnknown, "UNKNOWN"},
-};
-
-static constexpr std::string_view MethodString(Methods method) { return MethodRep.at(method); }
-
 static constexpr Methods MethodEnum(std::string_view method) {
+  /**
+   * @brief Cannot switch-case on string_view
+   */
   if (method == "GET") {
     return Methods::kGet;
   }
