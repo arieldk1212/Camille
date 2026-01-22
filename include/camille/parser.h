@@ -8,11 +8,10 @@
 #include "concepts.h"
 #include "error.h"
 
+#include <atomic>
 #include <cstdint>
-#include <list>
 #include <array>
 #include <expected>
-#include <map>
 #include <string_view>
 
 /**
@@ -38,6 +37,12 @@ length is correct.
 13. Request Smuggling prevention.
 */
 
+/**
+ * @todo at the end when finished, add rules and
+ * make sure it wont be overwritten.
+ * also clean the functions, make the code more readable.
+ */
+
 namespace camille {
 namespace parser {
 
@@ -50,6 +55,7 @@ enum class States : std::uint8_t {
   kWaitVersion,
   kVersion,
   kHeadersWait,
+  kHeaders,
   kKey,
   kValue,
   // kBody,
@@ -84,47 +90,11 @@ static constexpr bool IsOWS(char token) {
 static constexpr bool IsFormFeed(char token) { return token == 0x0C; }
 static constexpr bool IsCR(char token) { return token == 0x0D; }
 static constexpr bool IsLF(char token) { return token == 0x0A; }
-static constexpr bool IsCRLF(std::string_view token) { return token == "\r\n\r\n"; }
+static constexpr bool IsCRLF(std::string_view token) { return token == "\r\n"; }
+static constexpr bool IsEndOfHeaders(std::string_view token) { return token == "\r\n\r\n"; }
 
 class Parser {
  public:
-  struct CommonSymbolRequirement {
-    static constexpr auto placements = []() {
-      std::array<char, 33> arr{};
-      for (char c{0}; c <= 31; ++c) {
-        arr.at(c) = c;
-      }
-      arr[32] = 127;
-      return arr;
-    }();
-  };
-  struct AlphaNumericRequirement {
-    static constexpr auto placements = []() {
-      std::array<char, 62> arr{};
-      size_t i = 0;
-      for (char c = '0'; c <= '9'; ++c) {
-        arr[i++] = c;
-      }
-      for (char c = 'A'; c <= 'Z'; ++c) {
-        arr[i++] = c;
-      }
-      for (char c = 'a'; c <= 'z'; ++c) {
-        arr[i++] = c;
-      }
-      return arr;
-    }();
-  };
-  struct HeaderSymbolRequirement {
-    static constexpr std::array<char, 16> placements{'!', '#', '$', '%', '&', '\'', '*', '+',
-                                                     ',', '-', '.', '^', '_', '`',  '|', '~'};
-  };
-  struct ReservedSymbolRequirement {
-    static constexpr std::array<char, 4> placements{'#', '&', '=', '?'};
-  };
-  struct UnreservedSymbolRequirement {
-    static constexpr std::array<char, 4> placements{'-', '.', '_', '~'};
-  };
-
   /**
    * @brief Responsible for validating a certain token in the specific use-case.
    * @tparam requirements (concept that checks for 'placements' array inside, holding the symbols as
@@ -145,15 +115,56 @@ class Parser {
     }();
 
     template <std::same_as<char> T>
-    static constexpr bool IsValid(T token) {
+    [[nodiscard]] static constexpr bool IsValid(T token) {
       return kLookup[static_cast<unsigned char>(token)];
     }
+  };
+  struct CommonSymbolRequirement {
+    static constexpr auto placements = []() {
+      std::array<char, 33> arr{};
+      for (char ch{0}; ch <= 31; ++ch) {
+        arr.at(ch) = ch;
+      }
+      arr[32] = 127;
+      return arr;
+    }();
+  };
+  struct AlphaNumericRequirement {
+    static constexpr std::array<char, 62> placements{
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+        'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+        'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+        'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
+  };
+  struct HeaderSymbolRequirement {
+    static constexpr std::array<char, 16> placements{'!', '#', '$', '%', '&', '\'', '*', '+',
+                                                     ',', '-', '.', '^', '_', '`',  '|', '~'};
+  };
+  struct HeaderValueRequirement {
+    static constexpr auto placements = []() {
+      std::array<char, 95> arr{};
+      size_t iter{0};
+      for (char ch = 32; ch <= 126; ++ch) {
+        // arr[ch - 32] = ch;
+        arr.at(iter) = ch;
+        ++iter;
+      }
+      return arr;
+    }();
+  };
+  struct ReservedSymbolRequirement {
+    static constexpr std::array<char, 4> placements{'#', '&', '=', '?'};
+  };
+  struct UnreservedSymbolRequirement {
+    static constexpr std::array<char, 4> placements{'-', '.', '_', '~'};
   };
 
   using It = types::camille::CamilleStringViewIt;
   using UriTraits = ParserTraits<UnreservedSymbolRequirement, ReservedSymbolRequirement>;
-  using HeaderTraits =
-      ParserTraits<CommonSymbolRequirement, HeaderSymbolRequirement, AlphaNumericRequirement>;
+  using HeaderTraits = ParserTraits<CommonSymbolRequirement,
+                                    HeaderSymbolRequirement,
+                                    HeaderValueRequirement,
+                                    AlphaNumericRequirement>;
 
   struct Rocky {
     It begin;
@@ -166,9 +177,10 @@ class Parser {
 
   explicit operator bool() const { return current_state_ == States::kComplete; }
 
-  void SetUsed(bool used) { used_ = used; }
+  void SetUsed() { used_ = true; }
   [[nodiscard]] bool IsEmpty() const { return rocky_.begin == rocky_.end; }
   [[nodiscard]] std::uint8_t GetErrorCode() const { return static_cast<std::uint8_t>(error_); }
+  [[nodiscard]] std::string_view GetErrorString() const { return error::ErrorToString(error_); }
 
   template <concepts::IsReqResType T>
   static bool ParseMethod(auto& pos, T& dtype) {
@@ -224,7 +236,7 @@ class Parser {
       }
       ++pos;
     }
-    ++pos;  // now at \n
+    ++pos;  // now at '\n'
     std::string_view version(begin, pos - begin);
     dtype.SetVersion(version);
     return true;
@@ -232,6 +244,54 @@ class Parser {
 
   template <concepts::IsReqResType T>
   static bool ParseHeaders(auto& pos, T& dtype) {
+    It begin{};
+    bool can_consume_more{true};
+    while (can_consume_more) {
+      begin = pos;
+      while (*pos != ':') {
+        if (HeaderTraits::IsValid(*pos)) {
+          ++pos;
+        } else {
+          return false;
+        }
+      }
+      std::string_view current_key(begin, pos - begin);
+      ++pos;
+      if (IsSpace(*pos)) {
+        ++pos;
+      }
+      begin = pos;
+      while (!IsCR(*pos)) {
+        if (HeaderTraits::IsValid(*pos)) {
+          ++pos;
+        } else {
+          return false;
+        }
+      }
+      std::string_view current_value(begin, pos - begin);
+      dtype.AddHeader(current_key, current_value);
+
+      // return true;
+      begin = pos;
+      std::atomic<std::uint8_t> count{};
+
+      while (IsCR(*pos) || IsLF(*pos)) {
+        count.fetch_add(1, std::memory_order_relaxed);
+        ++pos;
+        if (count == 2) {
+          break;
+        }
+      }
+      begin = pos;
+      while (IsCR(*pos) || IsLF(*pos)) {
+        if (count == 4) {
+          can_consume_more = false;
+        } else {
+          count.fetch_add(1, std::memory_order_relaxed);
+          ++pos;
+        }
+      }
+    }
     return true;
   }
 
@@ -310,14 +370,14 @@ class Parser {
         case States::kHeadersWait:
           if (IsLF(*rocky_.begin)) {
             ++rocky_.begin;
-            current_state_ = States::kKey;
+            current_state_ = States::kHeaders;
           } else {
             error_ = error::Errors::kPartialMessage;
             current_state_ = States::kGarbage;
           }
           break;
 
-        case States::kKey:
+        case States::kHeaders:
           if (!ParseHeaders(rocky_.begin, dtype)) {
             error_ = error::Errors::kBadKey;
             current_state_ = States::kGarbage;
@@ -327,7 +387,7 @@ class Parser {
           break;
 
         case States::kComplete:
-          SetUsed(true);
+          SetUsed();
           // if (!IsEmpty()) {
           //   return std::unexpected(error::Errors::kStaleParser);
           // }

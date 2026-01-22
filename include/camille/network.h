@@ -55,9 +55,13 @@ class Session : public std::enable_shared_from_this<Session> {
         CAMILLE_DEBUG("Method: {}", req.Method());
         CAMILLE_DEBUG("Uri: {}", req.Path());
         CAMILLE_DEBUG("Verison: {}", req.Version());
+        for (const auto& [key, value] : req.Headers()) {
+          CAMILLE_DEBUG("Header Key: {}", key);
+          CAMILLE_DEBUG("Header Value: {}", value);
+        }
 
         // if (self->GetState()) {
-        // std::println("{}", data);
+        // CAMILLE_DEBUG("{}", data);
         // }
 
         self->stream_buffer_.consume(bytes);

@@ -1,6 +1,8 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_RESPONSE_H_
 #define CAMILLE_INCLUDE_CAMILLE_RESPONSE_H_
 
+#include "types.h"
+
 #include <string_view>
 
 namespace camille {
@@ -19,10 +21,16 @@ class Response {
   [[nodiscard]] std::string_view Version() const { return version_; }
   void SetVersion(std::string_view version) { version_ = version; }
 
+  [[nodiscard]] const types::camille::CamilleViewHeaders& Headers() const { return headers_; }
+  void AddHeader(std::string_view key, std::string_view value) {
+    headers_.emplace_back(key, value);
+  }
+
  private:
   std::string_view path_;
   std::string_view method_;
   std::string_view version_;
+  types::camille::CamilleViewHeaders headers_;
 };
 
 };  // namespace response
