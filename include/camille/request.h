@@ -2,6 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
 #include "types.h"
+#include "logging.h"
 
 /**
  * @example
@@ -26,9 +27,6 @@
 namespace camille {
 namespace request {
 
-/**
- * @todo method to extract request into a const data struct.
- */
 class Request {
  public:
   Request() = default;
@@ -62,6 +60,18 @@ class Request {
   [[nodiscard]] size_t Size() const { return request_size_; }
   void SetSize(size_t size) { request_size_ = size; }
   void AddSize(size_t size) { request_size_ += size; }
+
+  void PrintRequest() const {
+    CAMILLE_DEBUG("Method: {}", method_);
+    CAMILLE_DEBUG("Uri: {}", path_);
+    CAMILLE_DEBUG("Version: {}", version_);
+    CAMILLE_DEBUG("Host: {}", host_);
+    CAMILLE_DEBUG("Port: {}", port_);
+    for (const auto& [key, value] : headers_) {
+      CAMILLE_DEBUG("Header Key: {}", key);
+      CAMILLE_DEBUG("Header Value: {}", value);
+    }
+  }
 
  private:
   std::string_view host_;
