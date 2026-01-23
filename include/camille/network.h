@@ -3,6 +3,7 @@
 
 #include "asio/basic_streambuf.hpp"
 #include "asio/streambuf.hpp"
+#include "camille/benchmark.h"
 #include "types.h"
 #include "logging.h"
 #include "handler.h"
@@ -51,18 +52,23 @@ class Session : public std::enable_shared_from_this<Session> {
         //     asio::buffers_begin(buffer),
         //     std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
-        auto req = self_request_handler.Parse(data);
-        CAMILLE_DEBUG("Method: {}", req.Method());
-        CAMILLE_DEBUG("Uri: {}", req.Path());
-        CAMILLE_DEBUG("Verison: {}", req.Version());
-        for (const auto& [key, value] : req.Headers()) {
-          CAMILLE_DEBUG("Header Key: {}", key);
-          CAMILLE_DEBUG("Header Value: {}", value);
-        }
+        {
+          Benchmark here{"Parser Benchmark"};
+          auto req = self_request_handler.Parse(data);
+          CAMILLE_DEBUG("Method: {}", req.Method());
+          CAMILLE_DEBUG("Uri: {}", req.Path());
+          CAMILLE_DEBUG("Version: {}", req.Version());
+          CAMILLE_DEBUG("Host: {}", req.Host());
+          CAMILLE_DEBUG("Port: {}", req.Port());
+          for (const auto& [key, value] : req.Headers()) {
+            CAMILLE_DEBUG("Header Key: {}", key);
+            CAMILLE_DEBUG("Header Value: {}", value);
+          }
 
-        // if (self->GetState()) {
-        // CAMILLE_DEBUG("{}", data);
-        // }
+          // if (self->GetState()) {
+          //   CAMILLE_DEBUG("{}", data);
+          // }
+        }
 
         self->stream_buffer_.consume(bytes);
         self->DoWrite(bytes);

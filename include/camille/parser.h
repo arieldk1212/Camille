@@ -243,6 +243,19 @@ class Parser {
   }
 
   template <concepts::IsReqResType T>
+  static void ParseHost(std::string_view value, T& dtype) {
+    const char* pos = value.begin();
+    while (*pos != ':') {
+      ++pos;
+    }
+    std::string_view host(value.begin(), pos - value.begin());
+    ++pos;
+    std::string_view port(pos, value.end() - pos);
+    dtype.SetHost(host);
+    dtype.SetPort(port);
+  }
+
+  template <concepts::IsReqResType T>
   static bool ParseHeaders(auto& pos, T& dtype) {
     It begin{};
     bool can_consume_more{true};
@@ -270,26 +283,19 @@ class Parser {
       }
       std::string_view current_value(begin, pos - begin);
       dtype.AddHeader(current_key, current_value);
+      if (current_key == "Host" || current_key == "host") {
+        ParseHost(current_value, dtype);
+      }
 
-      // return true;
       begin = pos;
       std::atomic<std::uint8_t> count{};
 
       while (IsCR(*pos) || IsLF(*pos)) {
         count.fetch_add(1, std::memory_order_relaxed);
         ++pos;
-        if (count == 2) {
-          break;
-        }
       }
-      begin = pos;
-      while (IsCR(*pos) || IsLF(*pos)) {
-        if (count == 4) {
-          can_consume_more = false;
-        } else {
-          count.fetch_add(1, std::memory_order_relaxed);
-          ++pos;
-        }
+      if (count == 4) {
+        can_consume_more = false;
       }
     }
     return true;
@@ -383,6 +389,7 @@ class Parser {
             current_state_ = States::kGarbage;
           } else {
             current_state_ = States::kComplete;
+            return dtype;  // why? begin == end, next it will fail.
           }
           break;
 

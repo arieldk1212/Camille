@@ -18,19 +18,20 @@ class RequestHandler : public Handler {
  public:
   RequestHandler() = default;
 
-  const request::Request& Parse(std::string_view data) {
+  request::Request Parse(std::string_view data) {
     auto req = parser_.Parse<request::Request>(data);
     if (!parser_) {
       CAMILLE_ERROR("request parsing error - {}: ecode: {}", parser_.GetErrorString(),
                     parser_.GetErrorCode());
     }
-    request_ = req.value();
-    return request_;
+    if (req.has_value()) {
+      return req.value();
+    }
+    CAMILLE_ERROR("Parser error, no value found");
   }
 
  private:
   parser::Parser parser_;
-  request::Request request_;
 };
 
 class ResponseHandler : public Handler {

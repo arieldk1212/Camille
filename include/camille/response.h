@@ -12,6 +12,12 @@ class Response {
  public:
   Response() = default;
 
+  [[nodiscard]] std::string_view Host() const { return host_; }
+  void SetHost(std::string_view host) { host_ = host; }
+
+  [[nodiscard]] std::string_view Port() const { return port_; }
+  void SetPort(std::string_view port) { port_ = port; }
+
   [[nodiscard]] std::string_view Method() const { return method_; }
   void SetMethod(std::string_view method) { method_ = method; }
 
@@ -27,6 +33,8 @@ class Response {
   }
 
  private:
+  std::string_view host_;
+  std::string_view port_;
   std::string_view path_;
   std::string_view method_;
   std::string_view version_;
