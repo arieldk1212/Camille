@@ -245,7 +245,7 @@ class Parser {
   template <concepts::IsReqResType T>
   static void ParseHost(std::string_view value, T& dtype) {
     const char* pos = value.begin();
-    while (*pos != ':') {
+    while (pos != value.end() && *pos != ':') {
       ++pos;
     }
     std::string_view host(value.begin(), pos - value.begin());
@@ -283,7 +283,10 @@ class Parser {
       }
       std::string_view current_value(begin, pos - begin);
       dtype.AddHeader(current_key, current_value);
-      if (current_key == "Host" || current_key == "host") {
+      if (current_key.size() == 4 && (current_key[0] == 'H' || current_key[0] == 'h') &&
+          (current_key[1] == 'O' || current_key[1] == 'o') &&
+          (current_key[2] == 'S' || current_key[2] == 's') &&
+          (current_key[3] == 'T' || current_key[3] == 't')) {
         ParseHost(current_value, dtype);
       }
 
@@ -297,6 +300,20 @@ class Parser {
       if (count == 4) {
         can_consume_more = false;
       }
+      /**
+       if (pos + 2 <= (end) && IsCR(*pos) && IsLF(*(pos + 1))) {
+        +pos += 2;
+        +if (pos + 2 <= (end) &&IsCR(*pos) && IsLF(*(pos + 1))) {
+          +pos += 2;
+          +can_consume_more = false;
+          +
+        }
+        +
+      }
+      else {
+        can_consume_more = false;
+      }
+      */
     }
     return true;
   }
@@ -392,8 +409,6 @@ class Parser {
             return dtype;  // why? begin == end, next it will fail.
           }
           break;
-        
-
 
         case States::kComplete:
           SetUsed();

@@ -32,26 +32,26 @@ class Request {
   Request() = default;
 
   [[nodiscard]] std::string_view Host() const { return host_; }
-  void SetHost(std::string_view host) { host_ = host; }
+  void SetHost(std::string_view host) { host_ = std::string(host); }
 
   [[nodiscard]] std::string_view Port() const { return port_; }
-  void SetPort(std::string_view port) { port_ = port; }
+  void SetPort(std::string_view port) { port_ = std::string(port); }
 
   [[nodiscard]] std::string_view Path() const { return path_; }
-  void SetPath(std::string_view path) { path_ = path; }
+  void SetPath(std::string_view path) { path_ = std::string(path); }
 
   [[nodiscard]] std::string_view Body() const { return body_; }
-  void SetBody(std::string_view body) { body_ = body; }
+  void SetBody(std::string_view body) { body_ = std::string(body); }
 
   [[nodiscard]] std::string_view Method() const { return method_; }
-  void SetMethod(std::string_view method) { method_ = method; }
+  void SetMethod(std::string_view method) { method_ = std::string(method); }
 
   [[nodiscard]] std::string_view Version() const { return version_; }
-  void SetVersion(std::string_view version) { version_ = version; }
+  void SetVersion(std::string_view version) { version_ = std::string(version); }
 
-  [[nodiscard]] const types::camille::CamilleViewHeaders& Headers() const { return headers_; }
+  [[nodiscard]] const types::camille::CamilleHeaders& Headers() const { return headers_; }
   void AddHeader(std::string_view key, std::string_view value) {
-    headers_.emplace_back(key, value);
+    headers_.emplace_back(std::string(key), std::string(value));
   }
 
   [[nodiscard]] bool Auth() const { return has_auth_; }
@@ -74,13 +74,13 @@ class Request {
   }
 
  private:
-  std::string_view host_;
-  std::string_view port_;
-  std::string_view path_;
-  std::string_view body_;
-  std::string_view method_;
-  std::string_view version_;
-  types::camille::CamilleViewHeaders headers_;
+  std::string host_;
+  std::string port_;
+  std::string path_;
+  std::string body_;
+  std::string method_;
+  std::string version_;
+  types::camille::CamilleHeaders headers_;
 
   bool has_auth_{false};
   size_t request_size_{0};
