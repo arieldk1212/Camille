@@ -259,6 +259,7 @@ class Parser {
   static bool ParseHeaders(auto& pos, T& dtype) {
     It begin{};
     bool can_consume_more{true};
+
     while (can_consume_more) {
       begin = pos;
       while (*pos != ':') {
@@ -287,33 +288,28 @@ class Parser {
           (current_key[1] == 'O' || current_key[1] == 'o') &&
           (current_key[2] == 'S' || current_key[2] == 's') &&
           (current_key[3] == 'T' || current_key[3] == 't')) {
-        ParseHost(current_value, dtype);
+        ParseHost(current_value, dtype);  // to also get the port
       }
 
       begin = pos;
-      std::atomic<std::uint8_t> count{};
+      // std::atomic<std::uint8_t> count{};
 
-      while (IsCR(*pos) || IsLF(*pos)) {
-        count.fetch_add(1, std::memory_order_relaxed);
-        ++pos;
-      }
-      if (count == 4) {
-        can_consume_more = false;
-      }
-      /**
-       if (pos + 2 <= (end) && IsCR(*pos) && IsLF(*(pos + 1))) {
-        +pos += 2;
-        +if (pos + 2 <= (end) &&IsCR(*pos) && IsLF(*(pos + 1))) {
-          +pos += 2;
-          +can_consume_more = false;
-          +
+      // while (IsCR(*pos) || IsLF(*pos)) {
+      //   count.fetch_add(1, std::memory_order_relaxed);
+      //   ++pos;
+      // }
+      // if (count == 4) {
+      //   can_consume_more = false;
+      // }
+      if (pos + 2 && IsCR(*pos) && IsLF(*(pos + 1))) {
+        pos += 2;
+        if (IsCR(*pos) && IsLF(*(pos + 1))) {
+          pos += 2;
+          can_consume_more = false;
         }
-        +
-      }
-      else {
+      } else {
         can_consume_more = false;
       }
-      */
     }
     return true;
   }
@@ -406,7 +402,7 @@ class Parser {
             current_state_ = States::kGarbage;
           } else {
             current_state_ = States::kComplete;
-            return dtype;  // why? begin == end, next it will fail.
+            return dtype;  // reason? begin == end, next it will fail.
           }
           break;
 
