@@ -10,6 +10,7 @@
 /**
  * @brief Camille Logging Functionality
  * @todo maybe just use spdlog async logger?
+ * @todo add an option to write a test to file, follow benchmarks.
  */
 
 namespace camille {

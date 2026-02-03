@@ -1,6 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 #define CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 
+#include <optional>
 #include "camille/logging.h"
 #include "request.h"
 #include "response.h"
@@ -9,47 +10,48 @@
 namespace camille {
 namespace handler {
 
-class Handler {
- public:
-  virtual ~Handler() = default;
-};
-
-class RequestHandler : public Handler {
+class RequestHandler {
  public:
   RequestHandler() = default;
 
-  const request::Request& Parse(std::string_view data) {
+  std::optional<request::Request> Parse(std::string_view data) {
     auto req = parser_.Parse<request::Request>(data);
     if (!parser_) {
-      CAMILLE_ERROR("request parsing error - {}: ecode: {}", parser_.GetErrorString(),
+      CAMILLE_ERROR("Request parsing error: {} | ec: {}", parser_.GetErrorString(),
                     parser_.GetErrorCode());
+      return std::nullopt;
     }
-    request_ = req.value();
-    return request_;
+    if (!req) {
+      CAMILLE_ERROR("Parser error, no value found");
+      return std::nullopt;
+    }
+    return req.value();
   }
 
  private:
   parser::Parser parser_;
-  request::Request request_;
 };
 
-class ResponseHandler : public Handler {
+class ResponseHandler {
  public:
   ResponseHandler() = default;
 
-  const response::Response& Parse(std::string_view data) {
+  std::optional<response::Response> Parse(std::string_view data) {
     auto res = parser_.Parse<response::Response>(data);
     if (!parser_) {
-      CAMILLE_ERROR("response parsing error - {}: ecode: {}", parser_.GetErrorString(),
+      CAMILLE_ERROR("Response parsing error: {} | ec: {}", parser_.GetErrorString(),
                     parser_.GetErrorCode());
+      return std::nullopt;
     }
-    response_ = res.value();
-    return response_;
+    if (!res) {
+      CAMILLE_ERROR("Parser error, no value found");
+      return std::nullopt;
+    }
+    return res.value();
   }
 
  private:
   parser::Parser parser_;
-  response::Response response_;
 };
 
 };  // namespace handler
