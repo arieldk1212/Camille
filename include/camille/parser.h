@@ -6,7 +6,6 @@
 #include "concepts.h"
 #include "error.h"
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <array>
@@ -20,16 +19,10 @@ For validation:
 prioritize Transfer-Encoding or throw a 400 error.
 10. If Content-Length is invalid (e.g., 123, 456), you must throw an error. Never "guess" which
 length is correct.
-11. Always add body and be willing to accept one.
-12. Interact from front and back with the same http version.
+12. Interact from front and back with the same http version (does that mean to keep the version and
+validate for the whole backend?).
 13. Request Smuggling prevention.
 */
-
-/**
- * @todo at the end when finished, add rules and
- * make sure it wont be overwritten.
- * also clean the functions, make the code more readable.
- */
 
 namespace camille {
 namespace parser {
@@ -74,8 +67,6 @@ static constexpr bool IsSlash(char token) { return token == '/'; }
 static constexpr bool IsOWS(char token) {
   return static_cast<bool>(std::isspace(static_cast<unsigned char>(token)));
 }
-static constexpr bool IsVerticalTab(char token) { return token == 0x0B; }
-static constexpr bool IsFormFeed(char token) { return token == 0x0C; }
 static constexpr bool IsCR(char token) { return token == 0x0D; }
 static constexpr bool IsLF(char token) { return token == 0x0A; }
 static constexpr bool IsHeadersEnd(types::camille::CamilleStringViewIt& pos,
@@ -153,6 +144,7 @@ class Parser {
   using UriTraits = ParserTraits<UnreservedSymbolRequirement, ReservedSymbolRequirement>;
   using HeaderKeyTraits = ParserTraits<AlphaNumericRequirement, HeaderKeySymbolRequirement>;
   using HeaderValueTraits = ParserTraits<HeaderValueSymbolRequirement, TabRequirement>;
+  using BodyTraits = ParserTraits<>;
 
   struct Rocky {
     It begin;
@@ -327,6 +319,11 @@ class Parser {
   }
 
   template <concepts::IsReqResType T>
+  static bool ParseBody(auto& pos, It end, T& dtype, size_t& size) {
+    return true;
+  }
+
+  template <concepts::IsReqResType T>
   [[nodiscard]] std::expected<T, error::Errors> Parse(std::string_view data) {
     if (data.empty()) {
       error_ = error::Errors::kBadRequest;
@@ -337,12 +334,14 @@ class Parser {
     rocky_.begin = data.cbegin();
     rocky_.end = data.cend();
     rocky_.data = data;
+    total_consumed_ = data.size();
 
     while (rocky_.begin != rocky_.end) {
       switch (current_state_) {
         case States::kReady:
           if (used_) {
-            return std::unexpected(error::Errors::kStaleParser);
+            error_ = error::Errors::kStaleParser;
+            current_state_ = States::kGarbage;
           }
           current_state_ = States::kMethod;
           break;
@@ -418,8 +417,19 @@ class Parser {
             error_ = error::Errors::kBadKey;
             current_state_ = States::kGarbage;
           } else {
+            if (dtype.GetHeader("Host").has_value()) {
+              error_ = error::Errors::kBadRequest;
+              current_state_ = States::kGarbage;
+              break;
+            }
             if (IsEmpty()) {
               current_state_ = States::kComplete;
+              /**
+               * @todo figure out how to return and where correctly, if here or only complete state,
+               * change loop cond?
+               * also add content length header check and transfer encoding here!
+               */
+              dtype.SetSize(total_consumed_);
               return dtype;
             }
             current_state_ = States::kBody;
@@ -428,6 +438,19 @@ class Parser {
 
         case States::kBody:
           current_state_ = States::kComplete;
+          if (ParseBody(rocky_.begin, rocky_.end, dtype, data_limit_)) {
+            if (data_limit_ > kBodyLimit) {
+              error_ = error::Errors::kBodyLimit;
+              current_state_ = States::kGarbage;
+            } else {
+              current_state_ = States::kComplete;
+              dtype.SetSize(total_consumed_);
+              return dtype;
+            }
+          } else {
+            error_ = error::Errors::kBodyLimit;
+            current_state_ = States::kGarbage;
+          }
           break;
 
         case States::kComplete:
@@ -435,7 +458,7 @@ class Parser {
           if (!IsEmpty()) {
             return std::unexpected(error::Errors::kStaleParser);
           }
-          // dtype.SetSize(total_consumed_);
+          dtype.SetSize(total_consumed_);
           return dtype;
           break;
 
@@ -453,8 +476,8 @@ class Parser {
  private:
   Rocky rocky_;
   bool used_{false};
+  size_t data_limit_{0};
   size_t total_consumed_{0};
-  size_t data_limit_{kBodyLimit};
   States current_state_{States::kReady};
   error::Errors error_{error::Errors::kGeneralError};
 };

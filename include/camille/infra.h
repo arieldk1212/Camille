@@ -8,6 +8,10 @@ namespace camille {
 namespace infra {
 
 namespace headers {
+/**
+ * @todo add extra validation with the headers here (but what if someone adds a custom header? maybe
+ * create a header map?)
+ */
 static constexpr std::string kConnection = "Connection";
 static constexpr std::string kHost = "Host";
 static constexpr std::string kContentLength = "Content-Length";

@@ -30,6 +30,21 @@ class Response {
   void AddHeader(std::string_view key, std::string_view value) {
     headers_.emplace_back(std::string(key), std::string(value));
   }
+  std::optional<std::string_view> GetHeader(std::string_view header_key) {
+    /**
+     * @todo O(n).. no need to cache.. or yes? benchmark.
+     */
+    for (const auto& [key, value] : headers_) {
+      if (header_key == key) {
+        return std::string_view(value);
+      }
+    }
+    return std::nullopt;
+  }
+
+  [[nodiscard]] size_t Size() const { return response_size; }
+  void SetSize(size_t size) { response_size = size; }
+  void AddSize(size_t size) { response_size += size; }
 
   void PrintResponse() const {
     CAMILLE_DEBUG("Method: {}", method_);
@@ -50,6 +65,8 @@ class Response {
   std::string method_;
   std::string version_;
   types::camille::CamilleHeaders headers_;
+
+  size_t response_size{0};
 };
 
 };  // namespace response
