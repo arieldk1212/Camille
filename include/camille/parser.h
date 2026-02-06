@@ -1,14 +1,13 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_PARSER_H_
 #define CAMILLE_INCLUDE_CAMILLE_PARSER_H_
 
-#include "benchmark.h"
 #include "infra.h"
-#include "logging.h"
 #include "types.h"
 #include "concepts.h"
 #include "error.h"
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <array>
 #include <expected>
@@ -16,17 +15,6 @@
 
 /**
 For validation:
-1. Must check if a char is a control char (ASCII 0-31, 127).
-2. Allow alphanumeric a-z, A-Z, 0-9.
-3. Method and headers allow symbols !#$%&'*+-.^_`|~, Forbidden: @:/[] and other
-4. URI: Reserved (?#&=), Unreserved (-._~), Percent Encoding (% followed by exactly two hex decimal
-digits).
-5. OWS(Opt White Space): No whitespace allowed between the key and the colon, leading and trailing
-whitespace sohuld be identified so they can be trimmed, vertical tabs and form feeds should usually
-be rejected as garbage.
-6. A line must end with \r\n, Full request ends with \r\n\r\n.
-7. Header values must be in range of 32-126, or extended if support is on for internatiolized
-headers.
 8. Content-Length and Status Code must be 0-9 digit only!
 9. If a request has both Content-Length and Transfer-Encoding, the spec says you must
 prioritize Transfer-Encoding or throw a 400 error.
@@ -58,7 +46,7 @@ enum class States : std::uint8_t {
   kHeaders,
   kKey,
   kValue,
-  // kBody,
+  kBody,
   kComplete,
   kGarbage
 };
@@ -66,13 +54,12 @@ enum class States : std::uint8_t {
 static constexpr std::uint64_t kTableLimit = 256;
 static constexpr std::uint64_t kBodyLimit = 64 * 1024;  // 64k total, prob change
 
-/**
- * @brief Lookup map
- * @todo Decide on the implementation
- */
-
 static constexpr bool IsSpace(char token) { return token == ' ' || token == '\t'; }
 static constexpr bool IsDigit(char token) { return (token >= '0' && token <= '9'); }
+static constexpr bool IsHexDigit(char token) {
+  return (token >= '0' && token <= '9') || (token >= 'a' && token <= 'f') ||
+         (token >= 'A' && token <= 'F');
+}
 static constexpr bool IsLower(char token) {
   return (static_cast<unsigned char>(token) >= 'a' && static_cast<unsigned char>(token) <= 'z');
 }
@@ -87,11 +74,21 @@ static constexpr bool IsSlash(char token) { return token == '/'; }
 static constexpr bool IsOWS(char token) {
   return static_cast<bool>(std::isspace(static_cast<unsigned char>(token)));
 }
+static constexpr bool IsVerticalTab(char token) { return token == 0x0B; }
 static constexpr bool IsFormFeed(char token) { return token == 0x0C; }
 static constexpr bool IsCR(char token) { return token == 0x0D; }
 static constexpr bool IsLF(char token) { return token == 0x0A; }
-static constexpr bool IsCRLF(std::string_view token) { return token == "\r\n"; }
-static constexpr bool IsEndOfHeaders(std::string_view token) { return token == "\r\n\r\n"; }
+static constexpr bool IsHeadersEnd(types::camille::CamilleStringViewIt& pos,
+                                   types::camille::CamilleStringViewIt end) {
+  if ((end - pos) >= 2 && IsCR(*pos) && IsLF(*(pos + 1))) {
+    pos += 2;
+    if ((end - pos) >= 2 && IsCR(*pos) && IsLF(*(pos + 1))) {
+      pos += 2;
+      return false;
+    }
+  }
+  return true;
+}
 
 class Parser {
  public:
@@ -120,14 +117,7 @@ class Parser {
     }
   };
   struct CommonSymbolRequirement {
-    static constexpr auto placements = []() {
-      std::array<char, 33> arr{};
-      for (char ch{0}; ch <= 31; ++ch) {
-        arr.at(ch) = ch;
-      }
-      arr[32] = 127;
-      return arr;
-    }();
+    static constexpr std::array<char, 1> placements{' '};
   };
   struct AlphaNumericRequirement {
     static constexpr std::array<char, 62> placements{
@@ -136,21 +126,21 @@ class Parser {
         'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
         'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
   };
-  struct HeaderSymbolRequirement {
-    static constexpr std::array<char, 16> placements{'!', '#', '$', '%', '&', '\'', '*', '+',
-                                                     ',', '-', '.', '^', '_', '`',  '|', '~'};
+  struct HeaderKeySymbolRequirement {
+    static constexpr std::array<char, 15> placements{'!', '#', '$', '%', '&', '\'', '*', '+',
+                                                     '-', '.', '^', '_', '`', '|',  '~'};
   };
-  struct HeaderValueRequirement {
+  struct HeaderValueSymbolRequirement {
     static constexpr auto placements = []() {
-      std::array<char, 95> arr{};
-      size_t iter{0};
-      for (char ch = 32; ch <= 126; ++ch) {
-        // arr[ch - 32] = ch;
-        arr.at(iter) = ch;
-        ++iter;
+      std::array<char, 95> table{};
+      for (std::size_t i = 0; i < 95; ++i) {
+        table.at(i) = static_cast<char>(32 + i);
       }
-      return arr;
+      return table;
     }();
+  };
+  struct TabRequirement {
+    static constexpr std::array<char, 1> placements{'\t'};
   };
   struct ReservedSymbolRequirement {
     static constexpr std::array<char, 4> placements{'#', '&', '=', '?'};
@@ -161,10 +151,8 @@ class Parser {
 
   using It = types::camille::CamilleStringViewIt;
   using UriTraits = ParserTraits<UnreservedSymbolRequirement, ReservedSymbolRequirement>;
-  using HeaderTraits = ParserTraits<CommonSymbolRequirement,
-                                    HeaderSymbolRequirement,
-                                    HeaderValueRequirement,
-                                    AlphaNumericRequirement>;
+  using HeaderKeyTraits = ParserTraits<AlphaNumericRequirement, HeaderKeySymbolRequirement>;
+  using HeaderValueTraits = ParserTraits<HeaderValueSymbolRequirement, TabRequirement>;
 
   struct Rocky {
     It begin;
@@ -183,9 +171,12 @@ class Parser {
   [[nodiscard]] std::string_view GetErrorString() const { return error::ErrorToString(error_); }
 
   template <concepts::IsReqResType T>
-  static bool ParseMethod(auto& pos, T& dtype) {
+  static bool ParseMethod(auto& pos, const It end, T& dtype) {
     auto begin = pos;
-    while (!IsSpace(*pos) && !IsLower(*pos)) {
+    while (pos != end && !IsSpace(*pos) && !IsLower(*pos)) {
+      if (IsControl(*pos)) {
+        return false;
+      }
       ++pos;
     }
     std::string_view method(begin, pos - begin);
@@ -197,16 +188,25 @@ class Parser {
   }
 
   template <concepts::IsReqResType T>
-  static bool ParseUri(auto& pos, T& dtype) {
+  static bool ParseUri(auto& pos, It end, T& dtype) {
     auto begin = pos;
     if (!IsSlash(*pos)) {
       return false;
     }
     ++pos;
 
-    while (!IsSpace(*pos)) {
+    while (pos != end && !IsSpace(*pos)) {
+      if (IsControl(*pos)) {
+        return false;
+      }
       if (!IsChar(*pos) && !UriTraits::IsValid(*pos) && !IsSlash(*pos)) {
         return false;
+      }
+      if (*pos == '%') {
+        if ((pos + 2) >= end || !IsHexDigit(*(pos + 1)) || !IsHexDigit(*(pos + 2))) {
+          return false;
+        }
+        pos += 2;
       }
       ++pos;
     }
@@ -217,9 +217,12 @@ class Parser {
   }
 
   template <concepts::IsReqResType T>
-  static bool ParseVersion(auto& pos, T& dtype) {
+  static bool ParseVersion(auto& pos, const It end, T& dtype) {
     auto begin = pos;
-    while (!IsSlash(*pos)) {
+    while (pos != end && !IsSlash(*pos)) {
+      if (IsControl(*pos)) {
+        return false;
+      }
       if (!IsChar(*pos) || !IsUpper(*pos)) {
         return false;
       }
@@ -230,13 +233,22 @@ class Parser {
       return false;
     }
     ++pos;
-    while (!IsCR(*pos)) {
+    while (pos != end && !IsCR(*pos)) {
+      if (IsControl(*pos)) {
+        return false;
+      }
       if (!IsDigit(*pos) && *pos != '.') {
         return false;
       }
       ++pos;
     }
-    ++pos;  // now at '\n'
+
+    if (pos != end && IsCR(*pos)) {
+      ++pos;
+    } else {
+      return false;
+    }
+
     std::string_view version(begin, pos - begin);
     dtype.SetVersion(version);
     return true;
@@ -256,58 +268,58 @@ class Parser {
   }
 
   template <concepts::IsReqResType T>
-  static bool ParseHeaders(auto& pos, T& dtype) {
+  static bool ParseHeaders(auto& pos, const It end, T& dtype) {
     It begin{};
     bool can_consume_more{true};
 
-    while (can_consume_more) {
+    while (can_consume_more && pos < end) {
       begin = pos;
-      while (*pos != ':') {
-        if (HeaderTraits::IsValid(*pos)) {
+      while (pos != end && *pos != ':') {
+        if (HeaderKeyTraits::IsValid(*pos)) {
           ++pos;
         } else {
           return false;
         }
       }
+
+      if (pos == begin || pos == end) {
+        return false;
+      }
+
       std::string_view current_key(begin, pos - begin);
+
       ++pos;
-      if (IsSpace(*pos)) {
+      if (pos != end && IsSpace(*pos)) {
         ++pos;
+      } else {
+        return false;
       }
+
       begin = pos;
-      while (!IsCR(*pos)) {
-        if (HeaderTraits::IsValid(*pos)) {
+      while (pos != end && !IsCR(*pos)) {
+        if (HeaderValueTraits::IsValid(*pos)) {
           ++pos;
         } else {
           return false;
         }
       }
-      std::string_view current_value(begin, pos - begin);
+
+      auto OWSIt = pos;
+      while (OWSIt > begin && IsSpace(*(OWSIt - 1))) {
+        --OWSIt;
+      }
+
+      std::string_view current_value(begin, OWSIt - begin);
       dtype.AddHeader(current_key, current_value);
-      if (current_key.size() == 4 && (current_key[0] == 'H' || current_key[0] == 'h') &&
-          (current_key[1] == 'O' || current_key[1] == 'o') &&
-          (current_key[2] == 'S' || current_key[2] == 's') &&
-          (current_key[3] == 'T' || current_key[3] == 't')) {
-        ParseHost(current_value, dtype);  // to also get the port
+      if (current_key.size() == 4 && (current_key[0] | 0x20) == 'h' &&
+          (current_key[1] | 0x20) == 'o' && (current_key[2] | 0x20) == 's' &&
+          (current_key[3] | 0x20) == 't') {
+        ParseHost(current_value, dtype);
       }
 
       begin = pos;
-      // std::atomic<std::uint8_t> count{};
 
-      // while (IsCR(*pos) || IsLF(*pos)) {
-      //   count.fetch_add(1, std::memory_order_relaxed);
-      //   ++pos;
-      // }
-      // if (count == 4) {
-      //   can_consume_more = false;
-      // }
-      if (pos + 2 && IsCR(*pos) && IsLF(*(pos + 1))) {
-        pos += 2;
-        if (IsCR(*pos) && IsLF(*(pos + 1))) {
-          pos += 2;
-          can_consume_more = false;
-        }
-      } else {
+      if (!IsHeadersEnd(pos, end)) {
         can_consume_more = false;
       }
     }
@@ -316,6 +328,11 @@ class Parser {
 
   template <concepts::IsReqResType T>
   [[nodiscard]] std::expected<T, error::Errors> Parse(std::string_view data) {
+    if (data.empty()) {
+      error_ = error::Errors::kBadRequest;
+      return std::unexpected(error_);
+    }
+
     T dtype;
     rocky_.begin = data.cbegin();
     rocky_.end = data.cend();
@@ -331,7 +348,7 @@ class Parser {
           break;
 
         case States::kMethod:
-          if (!ParseMethod(rocky_.begin, dtype)) {
+          if (!ParseMethod(rocky_.begin, rocky_.end, dtype)) {
             error_ = error::Errors::kBadMethod;
             current_state_ = States::kGarbage;
           } else {
@@ -359,7 +376,7 @@ class Parser {
           break;
 
         case States::kUri:
-          if (!ParseUri(rocky_.begin, dtype)) {
+          if (!ParseUri(rocky_.begin, rocky_.end, dtype)) {
             error_ = error::Errors::kBadUri;
             current_state_ = States::kGarbage;
           } else {
@@ -378,7 +395,7 @@ class Parser {
           break;
 
         case States::kVersion:
-          if (!ParseVersion(rocky_.begin, dtype)) {
+          if (!ParseVersion(rocky_.begin, rocky_.end, dtype)) {
             error_ = error::Errors::kBadVersion;
             current_state_ = States::kGarbage;
           } else {
@@ -397,20 +414,27 @@ class Parser {
           break;
 
         case States::kHeaders:
-          if (!ParseHeaders(rocky_.begin, dtype)) {
+          if (!ParseHeaders(rocky_.begin, rocky_.end, dtype)) {
             error_ = error::Errors::kBadKey;
             current_state_ = States::kGarbage;
           } else {
-            current_state_ = States::kComplete;
-            return dtype;  // reason? begin == end, next it will fail.
+            if (IsEmpty()) {
+              current_state_ = States::kComplete;
+              return dtype;
+            }
+            current_state_ = States::kBody;
           }
+          break;
+
+        case States::kBody:
+          current_state_ = States::kComplete;
           break;
 
         case States::kComplete:
           SetUsed();
-          // if (!IsEmpty()) {
-          //   return std::unexpected(error::Errors::kStaleParser);
-          // }
+          if (!IsEmpty()) {
+            return std::unexpected(error::Errors::kStaleParser);
+          }
           // dtype.SetSize(total_consumed_);
           return dtype;
           break;

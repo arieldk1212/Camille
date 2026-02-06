@@ -52,14 +52,11 @@ class Session : public std::enable_shared_from_this<Session> {
         //     asio::buffers_begin(buffer),
         //     std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
-        auto req = [&] {
+        {
           Benchmark here{"Parser Benchmark"};
-          return self_request_handler.Parse(data);
-        };
-
-        // if (self->GetState()) {
-        //   CAMILLE_DEBUG("{}", data);
-        // }
+          auto request = self_request_handler.Parse(data);
+          request->PrintRequest();
+        }
 
         self->stream_buffer_.consume(bytes);
         self->DoWrite(bytes);
