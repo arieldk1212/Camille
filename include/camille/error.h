@@ -2,7 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_ERROR_H_
 
 #include <cstdint>
-#include <string>
+#include <string_view>
 
 namespace camille {
 namespace error {
@@ -19,6 +19,7 @@ enum class Errors : std::uint8_t {
   kEndOfStream,
   kSizeLimit,
   kBodyLimit,
+  kBadBody,
   kBufferOverflow,
   kPartialMessage,
   kShortRead,

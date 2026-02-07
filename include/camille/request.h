@@ -1,6 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
+#include <optional>
 #include "types.h"
 #include "logging.h"
 
@@ -53,6 +54,17 @@ class Request {
   void AddHeader(std::string_view key, std::string_view value) {
     headers_.emplace_back(std::string(key), std::string(value));
   }
+  std::optional<std::string_view> GetHeader(std::string_view header_key) {
+    /**
+     * @todo O(n).. no need to cache.. or yes? benchmark.
+     */
+    for (const auto& [key, value] : headers_) {
+      if (header_key == key) {
+        return std::string_view(value);
+      }
+    }
+    return std::nullopt;
+  }
 
   [[nodiscard]] bool Auth() const { return has_auth_; }
   void SetAuth(bool auth) { has_auth_ = auth; }
@@ -71,6 +83,7 @@ class Request {
       CAMILLE_DEBUG("Header Key: {}", key);
       CAMILLE_DEBUG("Header Value: {}", value);
     }
+    CAMILLE_DEBUG("Size: {}", request_size_);
   }
 
  private:

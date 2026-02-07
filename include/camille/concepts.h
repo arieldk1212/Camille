@@ -4,6 +4,7 @@
 #include <concepts>
 #include <string_view>
 #include <span>
+#include <optional>
 
 namespace camille {
 namespace concepts {
@@ -21,15 +22,15 @@ concept UnsignedIntegral = std::unsigned_integral<T>;
  * @param data
  */
 template <typename T>
-concept IsReqResType = requires(T val, std::string_view data) {
+concept IsReqResType = requires(T val, std::string_view data, size_t size) {
   {val.SetHost(data)}->std::same_as<void>;
   {val.SetPort(data)}->std::same_as<void>;
   {val.SetPath(data)}->std::same_as<void>;
   {val.SetMethod(data)}->std::same_as<void>;
   {val.SetVersion(data)}->std::same_as<void>;
   {val.AddHeader(data, data)}->std::same_as<void>;
-  // {val.SetPort()}->std::same_as<void>;
-  // {val.SetHost()}->std::same_as<void>;
+  {val.GetHeader(data)}->std::same_as<std::optional<std::string_view>>;
+  {val.SetSize(size)}->std::same_as<void>;
 };
 
 template <typename T>
