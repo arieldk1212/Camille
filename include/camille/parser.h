@@ -6,7 +6,6 @@
 #include "concepts.h"
 #include "error.h"
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <array>
