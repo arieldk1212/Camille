@@ -6,7 +6,6 @@
 #include "concepts.h"
 #include "error.h"
 
-#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <array>
@@ -341,25 +340,21 @@ class Parser {
    */
   template <concepts::IsReqResType T>
   static bool ParseBodyIdentify(auto& pos, It end, T& dtype, std::string_view body_value) {
-    if (!(*pos == '{') || !((pos + 1) < end)) {
-      return false;
-    }
-
     // we still want a legit threshold.. therefore 10.
     if (body_value.size() > (std::numeric_limits<int>::max() / 10)) {
       return false;
     }
 
+    size_t content_length{0};
     for (const auto& token : body_value) {
       if (!IsDigit(token)) {
         return false;
       }
+      content_length = (content_length * 10) + (token - '0');
     }
 
-    // we need to add check with the content length value and pos == end afterwards.
-
     auto available = static_cast<size_t>(end - pos);
-    if (available > kBodyLimit) {
+    if (content_length > kBodyLimit || available != content_length) {
       return false;
     }
     pos += available;
@@ -368,7 +363,9 @@ class Parser {
   }
 
   template <concepts::IsReqResType T>
-  static bool ParseBodyChunked(auto& pos, It end, T& dtype, std::string_view body_value) {}
+  static bool ParseBodyChunked(auto& pos, It end, T& dtype, std::string_view body_value) {
+    return true;
+  }
 
   template <concepts::IsReqResType T>
   [[nodiscard]] std::expected<T, error::Errors> Parse(std::string_view data) {

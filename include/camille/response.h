@@ -35,7 +35,7 @@ class Response {
    * @param header_key
    * @return std::optional<std::string_view>
    */
-  std::optional<std::string_view> GetHeader(std::string_view header_key) {
+  [[nodiscard]] std::optional<std::string_view> GetHeader(std::string_view header_key) const {
     int dup{0};
     std::string_view header_value{};
 
@@ -46,7 +46,7 @@ class Response {
       }
     }
 
-    if (!header_value.empty() && dup == 1) {
+    if (dup == 1) {
       return header_value;
     }
 
