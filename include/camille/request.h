@@ -2,28 +2,9 @@
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
 #include <optional>
+
 #include "types.h"
 #include "logging.h"
-
-/**
- * @example
- * POST /api/v1/update-profile?session_id=992834 HTTP/1.1
-   Host: 127.0.0.1:8085
-   Connection: keep-alive
-   Content-Length: 54
-   Content-Type: application/json; charset=UTF-8
-   User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like
- Gecko) Chrome/143.0.0.0 Safari/537.36 Accept: application/json, text/plain, *//*
-   Sec-CH-UA: "Brave";v="143", "Chromium";v="143", "Not A(Brand";v="24"
-   Sec-CH-UA-Platform: "macOS"
-   Accept-Encoding: gzip, deflate, br, zstd
-   Accept-Language: en-US,en;q=0.9
-   Referer: http://127.0.0.1:8085/settings/profile
-   {
-     "username": "camille_dev",
-     "status": "active"
-   }
- */
 
 namespace camille {
 namespace request {
@@ -54,14 +35,24 @@ class Request {
   void AddHeader(std::string_view key, std::string_view value) {
     headers_.emplace_back(std::string(key), std::string(value));
   }
+  /**
+   * @brief Get the Header object (checks for duplicates and emptiness)
+   * @param header_key
+   * @return std::optional<std::string_view>
+   */
   std::optional<std::string_view> GetHeader(std::string_view header_key) {
-    /**
-     * @todo O(n).. no need to cache.. or yes? benchmark.
-     */
+    int dup{0};
+    std::string_view header_value{};
+
     for (const auto& [key, value] : headers_) {
       if (header_key == key) {
-        return std::string_view(value);
+        header_value = std::string_view(value);
+        ++dup;
       }
+    }
+
+    if (!header_value.empty() && dup == 1) {
+      return header_value;
     }
     return std::nullopt;
   }

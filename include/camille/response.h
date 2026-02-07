@@ -30,15 +30,26 @@ class Response {
   void AddHeader(std::string_view key, std::string_view value) {
     headers_.emplace_back(std::string(key), std::string(value));
   }
+  /**
+   * @brief Get the Header object (checks for duplicates and emptiness)
+   * @param header_key
+   * @return std::optional<std::string_view>
+   */
   std::optional<std::string_view> GetHeader(std::string_view header_key) {
-    /**
-     * @todo O(n).. no need to cache.. or yes? benchmark.
-     */
+    int dup{0};
+    std::string_view header_value{};
+
     for (const auto& [key, value] : headers_) {
       if (header_key == key) {
-        return std::string_view(value);
+        header_value = std::string_view(value);
+        ++dup;
       }
     }
+
+    if (!header_value.empty() && dup == 1) {
+      return header_value;
+    }
+
     return std::nullopt;
   }
 

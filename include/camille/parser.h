@@ -6,6 +6,7 @@
 #include "concepts.h"
 #include "error.h"
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <array>
@@ -34,6 +35,8 @@ namespace parser {
 
 enum class States : std::uint8_t {
   kReady,
+  // kFileUpload,
+  // kDataUpload,
   kMethod,
   kWaitUri,
   kUriStart,
@@ -145,13 +148,16 @@ class Parser {
   struct UnreservedSymbolRequirement {
     static constexpr std::array<char, 4> placements{'-', '.', '_', '~'};
   };
+  struct BodyRequirement {
+    static constexpr std::array<char, 1> placements{'0'};
+  };
 
   using It = types::camille::CamilleStringViewIt;
   using UriTraits = ParserTraits<UnreservedSymbolRequirement, ReservedSymbolRequirement>;
   using HeaderKeyTraits = ParserTraits<AlphaNumericRequirement, HeaderKeySymbolRequirement>;
   using HeaderValueTraits = ParserTraits<HeaderValueSymbolRequirement, TabRequirement>;
-  using BodyIdentifyTraits = ParserTraits<>;
-  using BodyChunkedTraits = ParserTraits<>;
+  using BodyIdentifyTraits = ParserTraits<BodyRequirement>;
+  using BodyChunkedTraits = ParserTraits<BodyRequirement>;
 
   struct Rocky {
     It begin;
@@ -334,9 +340,35 @@ class Parser {
    * @param body_limit_ - Private member of the parser, used for post-validation with kBodyLimit
    */
   template <concepts::IsReqResType T>
-  static bool ParseBody(auto& pos, It end, T& dtype, size_t body_size, size_t& body_limit_) {
+  static bool ParseBodyIdentify(auto& pos, It end, T& dtype, std::string_view body_value) {
+    if (!(*pos == '{') || !((pos + 1) < end)) {
+      return false;
+    }
+
+    // we still want a legit threshold.. therefore 10.
+    if (body_value.size() > (std::numeric_limits<int>::max() / 10)) {
+      return false;
+    }
+
+    for (const auto& token : body_value) {
+      if (!IsDigit(token)) {
+        return false;
+      }
+    }
+
+    // we need to add check with the content length value and pos == end afterwards.
+
+    auto available = static_cast<size_t>(end - pos);
+    if (available > kBodyLimit) {
+      return false;
+    }
+    pos += available;
+
     return true;
   }
+
+  template <concepts::IsReqResType T>
+  static bool ParseBodyChunked(auto& pos, It end, T& dtype, std::string_view body_value) {}
 
   template <concepts::IsReqResType T>
   [[nodiscard]] std::expected<T, error::Errors> Parse(std::string_view data) {
@@ -448,21 +480,23 @@ class Parser {
               current_state_ = States::kBodyIdentify;
             } else if (dtype.GetHeader("Transfer-Encoding").has_value()) {
               current_state_ = States::kBodyChunked;
+            } else {
+              error_ = error::Errors::kBadRequest;
+              current_state_ = States::kGarbage;
             }
           } else {
-            error_ = error::Errors::kBadKey;
+            error_ = error::Errors::kBadRequest;
             current_state_ = States::kGarbage;
           }
           break;
 
         case States::kBodyIdentify:
-          if (!ParseBody(rocky_.begin, rocky_.end, dtype,
-                         dtype.GetHeader("Content-Length").value().size()),
-              body_limit_) {
+          if (!ParseBodyIdentify(rocky_.begin, rocky_.end, dtype,
+                                 dtype.GetHeader("Content-Length").value())) {
             error_ = error::Errors::kBadBody;
             current_state_ = States::kGarbage;
           } else {
-            if (IsDataEnd() && body_limit_ <= kBodyLimit) {
+            if (IsDataEnd()) {
               current_state_ = States::kComplete;
               return dtype;
             }
@@ -472,13 +506,12 @@ class Parser {
           break;
 
         case States::kBodyChunked:
-          if (!ParseBody(rocky_.begin, rocky_.end, dtype,
-                         dtype.GetHeader("Transfer-Encoding").value().size()),
-              body_limit_) {
+          if (!ParseBodyChunked(rocky_.begin, rocky_.end, dtype,
+                                dtype.GetHeader("Transfer-Encoding").value().size())) {
             error_ = error::Errors::kBadHeader;
             current_state_ = States::kGarbage;
           } else {
-            if (IsDataEnd() && body_limit_ <= kBodyLimit) {
+            if (IsDataEnd()) {
               current_state_ = States::kComplete;
               return dtype;
             }
@@ -510,7 +543,6 @@ class Parser {
  private:
   Rocky rocky_;
   bool used_{false};
-  size_t body_limit_{0};
   size_t total_consumed_{0};
   States current_state_{States::kReady};
   error::Errors error_{error::Errors::kGeneralError};

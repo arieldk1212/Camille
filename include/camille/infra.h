@@ -2,6 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 
 #include <string>
+#include <cstdint>
 
 namespace camille {
 
@@ -29,10 +30,10 @@ static constexpr std::string Date = "Date";
 static constexpr std::string Expect = "Expect";
 static constexpr std::string IfMatch = "If-Match";
 static constexpr std::string IfNoneMatch = "If-None-Match";
-static constexpr std::string IfModifiedSince = "If-Modified-Since";
+// static constexpr std::string IfModifiedSince = "If-Modified-Since";
 static constexpr std::string Origin = "Origin";
 static constexpr std::string Range = "Range";
-static constexpr std::string TransferEncoding = "Transfer-Encoding";
+// static constexpr std::string TransferEncoding = "Transfer-Encoding";
 static constexpr std::string Upgrade = "Upgrade";
 static constexpr std::string XForwardedFor = "X-Forwarded-For";
 };  // namespace headers
