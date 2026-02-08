@@ -20,6 +20,7 @@ enum class Errors : std::uint8_t {
   kSizeLimit,
   kBodyLimit,
   kBadBody,
+  kBadContentLength,
   kBufferOverflow,
   kPartialMessage,
   kShortRead,

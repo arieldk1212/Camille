@@ -23,8 +23,14 @@ class Response {
   [[nodiscard]] std::string_view Path() const { return path_; }
   void SetPath(std::string_view path) { path_ = std::string(path); }
 
+  [[nodiscard]] std::string_view Body() const { return body_; }
+  void SetBody(std::string_view body) { body_ = std::string(body); }
+
   [[nodiscard]] std::string_view Version() const { return version_; }
   void SetVersion(std::string_view version) { version_ = std::string(version); }
+
+  [[nodiscard]] size_t ContentLength() const { return content_length_; }
+  void SetContentLength(size_t content_length) { content_length_ = content_length; }
 
   [[nodiscard]] const types::camille::CamilleHeaders& Headers() const { return headers_; }
   void AddHeader(std::string_view key, std::string_view value) {
@@ -67,14 +73,17 @@ class Response {
       CAMILLE_DEBUG("Header Key: {}", key);
       CAMILLE_DEBUG("Header Value: {}", value);
     }
+    CAMILLE_DEBUG("Content-Length: {}", content_length_);
   }
 
  private:
   std::string host_;
   std::string port_;
   std::string path_;
+  std::string body_;
   std::string method_;
   std::string version_;
+  size_t content_length_;
   types::camille::CamilleHeaders headers_;
 
   size_t response_size{0};

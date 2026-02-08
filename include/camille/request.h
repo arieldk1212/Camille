@@ -31,6 +31,9 @@ class Request {
   [[nodiscard]] std::string_view Version() const { return version_; }
   void SetVersion(std::string_view version) { version_ = std::string(version); }
 
+  [[nodiscard]] size_t ContentLength() const { return content_length_; }
+  void SetContentLength(size_t content_length) { content_length_ = content_length; }
+
   [[nodiscard]] const types::camille::CamilleHeaders& Headers() const { return headers_; }
   void AddHeader(std::string_view key, std::string_view value) {
     headers_.emplace_back(std::string(key), std::string(value));
@@ -75,6 +78,8 @@ class Request {
       CAMILLE_DEBUG("Header Value: {}", value);
     }
     CAMILLE_DEBUG("Size: {}", request_size_);
+    CAMILLE_DEBUG("Content-Length: {}", content_length_);
+    CAMILLE_DEBUG("Body: {}", body_);
   }
 
  private:
@@ -84,6 +89,7 @@ class Request {
   std::string body_;
   std::string method_;
   std::string version_;
+  size_t content_length_;
   types::camille::CamilleHeaders headers_;
 
   bool has_auth_{false};
