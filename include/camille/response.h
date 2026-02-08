@@ -23,22 +23,39 @@ class Response {
   [[nodiscard]] std::string_view Path() const { return path_; }
   void SetPath(std::string_view path) { path_ = std::string(path); }
 
+  [[nodiscard]] std::string_view Body() const { return body_; }
+  void SetBody(std::string_view body) { body_ = std::string(body); }
+
   [[nodiscard]] std::string_view Version() const { return version_; }
   void SetVersion(std::string_view version) { version_ = std::string(version); }
+
+  [[nodiscard]] size_t ContentLength() const { return content_length_; }
+  void SetContentLength(size_t content_length) { content_length_ = content_length; }
 
   [[nodiscard]] const types::camille::CamilleHeaders& Headers() const { return headers_; }
   void AddHeader(std::string_view key, std::string_view value) {
     headers_.emplace_back(std::string(key), std::string(value));
   }
-  std::optional<std::string_view> GetHeader(std::string_view header_key) {
-    /**
-     * @todo O(n).. no need to cache.. or yes? benchmark.
-     */
+  /**
+   * @brief Get the Header object (checks for duplicates and emptiness)
+   * @param header_key
+   * @return std::optional<std::string_view>
+   */
+  [[nodiscard]] std::optional<std::string_view> GetHeader(std::string_view header_key) const {
+    int dup{0};
+    std::string_view header_value{};
+
     for (const auto& [key, value] : headers_) {
       if (header_key == key) {
-        return std::string_view(value);
+        header_value = std::string_view(value);
+        ++dup;
       }
     }
+
+    if (dup == 1) {
+      return header_value;
+    }
+
     return std::nullopt;
   }
 
@@ -56,14 +73,17 @@ class Response {
       CAMILLE_DEBUG("Header Key: {}", key);
       CAMILLE_DEBUG("Header Value: {}", value);
     }
+    CAMILLE_DEBUG("Content-Length: {}", content_length_);
   }
 
  private:
   std::string host_;
   std::string port_;
   std::string path_;
+  std::string body_;
   std::string method_;
   std::string version_;
+  size_t content_length_;
   types::camille::CamilleHeaders headers_;
 
   size_t response_size{0};

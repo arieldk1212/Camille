@@ -34,6 +34,8 @@ namespace parser {
 
 enum class States : std::uint8_t {
   kReady,
+  // kFileUpload,
+  // kDataUpload,
   kMethod,
   kWaitUri,
   kUriStart,
@@ -42,8 +44,7 @@ enum class States : std::uint8_t {
   kVersion,
   kHeadersWait,
   kHeaders,
-  kKey,
-  kValue,
+  kBodyValidation,
   kBodyIdentify,
   kBodyChunked,
   kComplete,
@@ -85,6 +86,27 @@ static constexpr bool IsHeadersEnd(types::camille::CamilleStringViewIt& pos,
     }
   }
   return true;
+}
+static constexpr std::expected<size_t, bool> ValidateContentLength(std::string_view value) {
+  if (value.empty()) {
+    return std::unexpected(false);
+  }
+
+  size_t content_length{0};
+  for (const auto& token : value) {
+    if (!IsDigit(token)) {
+      return std::unexpected(false);
+    }
+    if (content_length > (std::numeric_limits<size_t>::max()) / 10) {
+      return std::unexpected(false);
+    }
+    content_length = (content_length * 10) + (token - '0');
+  }
+
+  if (content_length > kBodyLimit) {
+    return std::unexpected(false);
+  }
+  return content_length;
 }
 
 class Parser {
@@ -145,13 +167,16 @@ class Parser {
   struct UnreservedSymbolRequirement {
     static constexpr std::array<char, 4> placements{'-', '.', '_', '~'};
   };
+  struct BodyRequirement {
+    static constexpr std::array<char, 0> placements{};
+  };
 
   using It = types::camille::CamilleStringViewIt;
   using UriTraits = ParserTraits<UnreservedSymbolRequirement, ReservedSymbolRequirement>;
   using HeaderKeyTraits = ParserTraits<AlphaNumericRequirement, HeaderKeySymbolRequirement>;
   using HeaderValueTraits = ParserTraits<HeaderValueSymbolRequirement, TabRequirement>;
-  using BodyIdentifyTraits = ParserTraits<>;
-  using BodyChunkedTraits = ParserTraits<>;
+  using BodyIdentifyTraits = ParserTraits<BodyRequirement>;
+  using BodyChunkedTraits = ParserTraits<BodyRequirement>;
 
   struct Rocky {
     It begin;
@@ -165,8 +190,10 @@ class Parser {
   explicit operator bool() const { return current_state_ == States::kComplete; }
 
   void SetUsed() { used_ = true; }
-  [[nodiscard]] bool IsDataEnd() const { return rocky_.begin == rocky_.end; }
-  [[nodiscard]] std::uint8_t GetErrorCode() const { return static_cast<std::uint8_t>(error_); }
+  [[nodiscard]] bool IsDataEnd() const noexcept { return rocky_.begin == rocky_.end; }
+  [[nodiscard]] std::uint8_t GetErrorCode() const noexcept {
+    return static_cast<std::uint8_t>(error_);
+  }
   [[nodiscard]] std::string_view GetErrorString() const { return error::ErrorToString(error_); }
 
   template <concepts::IsReqResType T>
@@ -231,7 +258,14 @@ class Parser {
     if (http != "HTTP") {
       return false;
     }
+
+    if (!IsSlash(*pos)) {
+      return false;
+    }
     ++pos;
+
+    begin = pos;
+
     while (pos != end && !IsCR(*pos)) {
       if (IsControl(*pos)) {
         return false;
@@ -242,14 +276,15 @@ class Parser {
       ++pos;
     }
 
+    std::string_view version(begin, pos - begin);
+    dtype.SetVersion(version);
+
     if (pos != end && IsCR(*pos)) {
       ++pos;
     } else {
       return false;
     }
 
-    std::string_view version(begin, pos - begin);
-    dtype.SetVersion(version);
     return true;
   }
 
@@ -330,11 +365,26 @@ class Parser {
    * @param pos
    * @param end
    * @param dtype
-   * @param body_size - The size of the body (from content-length)
-   * @param body_limit_ - Private member of the parser, used for post-validation with kBodyLimit
+   * @param body_size - The size of the body (from content-length header)
    */
   template <concepts::IsReqResType T>
-  static bool ParseBody(auto& pos, It end, T& dtype, size_t body_size, size_t& body_limit_) {
+  static bool ParseBodyIdentify(auto& pos, It end, T& dtype, size_t expected_length) {
+    auto available = static_cast<size_t>(end - pos);
+
+    if (available < expected_length) {
+      return false;
+    }
+
+    std::string_view body_date(pos, expected_length);
+    dtype.SetBody(body_date);
+
+    pos += expected_length;
+
+    return true;
+  }
+
+  template <concepts::IsReqResType T>
+  static bool ParseBodyChunked(auto& pos, It end, T& dtype, std::string_view body_value) {
     return true;
   }
 
@@ -351,7 +401,11 @@ class Parser {
     rocky_.data = data;
     total_consumed_ = data.size();
 
-    while (rocky_.begin != rocky_.end) {
+    while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {
+      if (IsDataEnd()) {
+        return std::unexpected(error::Errors::kPartialMessage);
+      }
+
       switch (current_state_) {
         case States::kReady:
           if (used_) {
@@ -427,74 +481,79 @@ class Parser {
           }
           break;
 
-        case States::kHeaders:
+        case States::kHeaders: {
           if (ParseHeaders(rocky_.begin, rocky_.end, dtype)) {
-            if (!dtype.GetHeader("Host").has_value()) {
+            if (!dtype.GetHeader(infra::headers::kHost).has_value()) {
               error_ = error::Errors::kBadRequest;
               current_state_ = States::kGarbage;
               break;
             }
-            if (IsDataEnd()) {
+            auto cl_header = dtype.GetHeader(infra::headers::kContentLength);
+            if (!cl_header.has_value()) {
               current_state_ = States::kComplete;
               dtype.SetSize(total_consumed_);
+              SetUsed();
               return dtype;
-              break;
             }
-            if (dtype.GetHeader("Content-Length").has_value() &&
-                dtype.GetHeader("Transfer-Encoding").has_value()) {
-              error_ = error::Errors::kBadRequest;
+            current_state_ = States::kBodyValidation;
+          } else {
+            error_ = error::Errors::kBadRequest;
+            current_state_ = States::kGarbage;
+          }
+        } break;
+
+        case States::kBodyValidation: {
+          auto cl_header = dtype.GetHeader(infra::headers::kContentLength);
+          auto te_header = dtype.GetHeader(infra::headers::kTransferEncoding);
+          if (cl_header.has_value() && te_header.has_value()) {
+            error_ = error::Errors::kBadRequest;
+            current_state_ = States::kGarbage;
+          } else if (cl_header.has_value()) {
+            auto content_length = ValidateContentLength(cl_header.value());
+            if (!content_length) {
+              error_ = error::Errors::kBadContentLength;
               current_state_ = States::kGarbage;
-            } else if (dtype.GetHeader("Content-Length").has_value()) {
-              current_state_ = States::kBodyIdentify;
-            } else if (dtype.GetHeader("Transfer-Encoding").has_value()) {
-              current_state_ = States::kBodyChunked;
             }
-          } else {
-            error_ = error::Errors::kBadKey;
-            current_state_ = States::kGarbage;
-          }
-          break;
+            dtype.SetContentLength(content_length.value());
+            current_state_ = States::kBodyIdentify;
+            break;
+          } else if (te_header.has_value()) {
+            current_state_ = States::kBodyChunked;
 
-        case States::kBodyIdentify:
-          if (!ParseBody(rocky_.begin, rocky_.end, dtype,
-                         dtype.GetHeader("Content-Length").value().size()),
-              body_limit_) {
-            error_ = error::Errors::kBadBody;
-            current_state_ = States::kGarbage;
-          } else {
-            if (IsDataEnd() && body_limit_ <= kBodyLimit) {
-              current_state_ = States::kComplete;
-              return dtype;
-            }
-            error_ = error::Errors::kBadBody;
+            error_ = error::Errors::kBadRequest;
             current_state_ = States::kGarbage;
           }
-          break;
+        } break;
 
-        case States::kBodyChunked:
-          if (!ParseBody(rocky_.begin, rocky_.end, dtype,
-                         dtype.GetHeader("Transfer-Encoding").value().size()),
-              body_limit_) {
-            error_ = error::Errors::kBadHeader;
-            current_state_ = States::kGarbage;
-          } else {
-            if (IsDataEnd() && body_limit_ <= kBodyLimit) {
-              current_state_ = States::kComplete;
-              return dtype;
-            }
-            error_ = error::Errors::kBadBody;
-            current_state_ = States::kGarbage;
+        case States::kBodyIdentify: {
+          size_t expected_length = dtype.ContentLength();
+          if (ParseBodyIdentify(rocky_.begin, rocky_.end, dtype, expected_length)) {
+            current_state_ = States::kComplete;
+            dtype.SetSize(total_consumed_);
+            SetUsed();
+            return dtype;
           }
-          break;
+        } break;
+
+        case States::kBodyChunked: {
+          // if (ParseBodyChunked(rocky_.begin, rocky_.end, dtype, expected_length) && IsDataEnd())
+          // {
+          //   current_state_ = States::kComplete;
+          //   dtype.SetSize(total_consumed_);
+          //   SetUsed();
+          //   return dtype;
+          // }
+          error_ = error::Errors::kBadBody;
+          current_state_ = States::kGarbage;
+        } break;
 
         case States::kComplete:
           SetUsed();
-          if (!IsDataEnd()) {
-            return std::unexpected(error::Errors::kStaleParser);
-          }
-          // dtype.SetSize(total_consumed_);
-          // return dtype;
-          break;
+          // if (!IsDataEnd()) {
+          //   return std::unexpected(error::Errors::kStaleParser);
+          // }
+          dtype.SetSize(total_consumed_);
+          return dtype;
 
         case States::kGarbage:
           return std::unexpected(error_);
@@ -510,7 +569,6 @@ class Parser {
  private:
   Rocky rocky_;
   bool used_{false};
-  size_t body_limit_{0};
   size_t total_consumed_{0};
   States current_state_{States::kReady};
   error::Errors error_{error::Errors::kGeneralError};

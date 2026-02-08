@@ -15,6 +15,7 @@ namespace headers {
 static constexpr std::string kConnection = "Connection";
 static constexpr std::string kHost = "Host";
 static constexpr std::string kContentLength = "Content-Length";
+static const std::string kTransferEncoding = "Transfer-Encoding";
 static constexpr std::string kContentType = "Content-Type";
 static constexpr std::string kUserAgent = "User-Agent";
 static constexpr std::string kSecCHUA = "Sec-CH-UA";
@@ -25,6 +26,7 @@ static constexpr std::string kReferer = "Referer";
 static constexpr std::string kAuthorization = "Authorization";
 static constexpr std::string kCacheControl = "Cache-Control";
 static constexpr std::string kCookie = "Cookie";
+<<<<<<< HEAD
 static constexpr std::string Date = "Date";
 static constexpr std::string Expect = "Expect";
 static constexpr std::string IfMatch = "If-Match";
@@ -35,6 +37,17 @@ static constexpr std::string Range = "Range";
 // static constexpr std::string TransferEncoding = "Transfer-Encoding";
 static constexpr std::string Upgrade = "Upgrade";
 static constexpr std::string XForwardedFor = "X-Forwarded-For";
+=======
+static constexpr std::string kDate = "Date";
+static constexpr std::string kExpect = "Expect";
+static constexpr std::string kIfMatch = "If-Match";
+static constexpr std::string kIfNoneMatch = "If-None-Match";
+static const std::string kIfModifiedSince = "If-Modified-Since";
+static constexpr std::string kOrigin = "Origin";
+static constexpr std::string kRange = "Range";
+static constexpr std::string kUpgrade = "Upgrade";
+static constexpr std::string kXForwardedFor = "X-Forwarded-For";
+>>>>>>> development
 };  // namespace headers
 
 enum class Methods : std::uint8_t {
