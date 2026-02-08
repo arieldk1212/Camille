@@ -190,8 +190,10 @@ class Parser {
   explicit operator bool() const { return current_state_ == States::kComplete; }
 
   void SetUsed() { used_ = true; }
-  [[nodiscard]] bool IsDataEnd() const { return rocky_.begin == rocky_.end; }
-  [[nodiscard]] std::uint8_t GetErrorCode() const { return static_cast<std::uint8_t>(error_); }
+  [[nodiscard]] bool IsDataEnd() const noexcept { return rocky_.begin == rocky_.end; }
+  [[nodiscard]] std::uint8_t GetErrorCode() const noexcept {
+    return static_cast<std::uint8_t>(error_);
+  }
   [[nodiscard]] std::string_view GetErrorString() const { return error::ErrorToString(error_); }
 
   template <concepts::IsReqResType T>
@@ -257,6 +259,9 @@ class Parser {
       return false;
     }
 
+    if (!IsSlash(*pos)) {
+      return false;
+    }
     ++pos;
 
     begin = pos;
@@ -271,7 +276,7 @@ class Parser {
       ++pos;
     }
 
-    std::string_view version(begin, pos - begin - 1);
+    std::string_view version(begin, pos - begin);
     dtype.SetVersion(version);
 
     if (pos != end && IsCR(*pos)) {
@@ -396,7 +401,11 @@ class Parser {
     rocky_.data = data;
     total_consumed_ = data.size();
 
-    while (rocky_.begin != rocky_.end) {
+    while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {
+      if (IsDataEnd()) {
+        return std::unexpected(error::Errors::kPartialMessage);
+      }
+
       switch (current_state_) {
         case States::kReady:
           if (used_) {
@@ -472,14 +481,15 @@ class Parser {
           }
           break;
 
-        case States::kHeaders:
+        case States::kHeaders: {
           if (ParseHeaders(rocky_.begin, rocky_.end, dtype)) {
             if (!dtype.GetHeader(infra::headers::kHost).has_value()) {
               error_ = error::Errors::kBadRequest;
               current_state_ = States::kGarbage;
               break;
             }
-            if (IsDataEnd()) {
+            auto cl_header = dtype.GetHeader(infra::headers::kContentLength);
+            if (!cl_header.has_value()) {
               current_state_ = States::kComplete;
               dtype.SetSize(total_consumed_);
               SetUsed();
@@ -490,7 +500,7 @@ class Parser {
             error_ = error::Errors::kBadRequest;
             current_state_ = States::kGarbage;
           }
-          break;
+        } break;
 
         case States::kBodyValidation: {
           auto cl_header = dtype.GetHeader(infra::headers::kContentLength);
@@ -509,7 +519,7 @@ class Parser {
             break;
           } else if (te_header.has_value()) {
             current_state_ = States::kBodyChunked;
-          } else {
+
             error_ = error::Errors::kBadRequest;
             current_state_ = States::kGarbage;
           }
@@ -517,7 +527,7 @@ class Parser {
 
         case States::kBodyIdentify: {
           size_t expected_length = dtype.ContentLength();
-          if (ParseBodyIdentify(rocky_.begin, rocky_.end, dtype, expected_length) && IsDataEnd()) {
+          if (ParseBodyIdentify(rocky_.begin, rocky_.end, dtype, expected_length)) {
             current_state_ = States::kComplete;
             dtype.SetSize(total_consumed_);
             SetUsed();
@@ -539,9 +549,9 @@ class Parser {
 
         case States::kComplete:
           SetUsed();
-          if (!IsDataEnd()) {
-            return std::unexpected(error::Errors::kStaleParser);
-          }
+          // if (!IsDataEnd()) {
+          //   return std::unexpected(error::Errors::kStaleParser);
+          // }
           dtype.SetSize(total_consumed_);
           return dtype;
 
