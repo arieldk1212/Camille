@@ -1,13 +1,13 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
-#include "asio/basic_streambuf.hpp"
-#include "asio/streambuf.hpp"
-#include "camille/benchmark.h"
+#include "error.h"
 #include "types.h"
 #include "logging.h"
 #include "handler.h"
 
+#include "asio/basic_streambuf.hpp"
+#include "asio/streambuf.hpp"
 #include "asio/read_until.hpp"
 #include "asio/read.hpp"
 #include "asio/write.hpp"
@@ -52,10 +52,13 @@ class Session : public std::enable_shared_from_this<Session> {
         //     asio::buffers_begin(buffer),
         //     std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
-        {
-          Benchmark here{"Parser Benchmark"};
-          auto request = self_request_handler.Parse(data);
-          request->PrintRequest();
+        auto [request, error] = self_request_handler.Parse(data);
+        if (request.has_value()) {
+          request.value().PrintRequest();
+        } else if (error.value() == error::Errors::kPartialMessage) {
+          // auto [request, error] = self_request_handler.Parse(data, States::)
+        } else {
+          CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(error.value()));
         }
 
         self->stream_buffer_.consume(bytes);

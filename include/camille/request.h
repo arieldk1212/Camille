@@ -89,7 +89,7 @@ class Request {
   std::string body_;
   std::string method_;
   std::string version_;
-  size_t content_length_;
+  size_t content_length_{0};
   types::camille::CamilleHeaders headers_;
 
   bool has_auth_{false};
