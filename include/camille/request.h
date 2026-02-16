@@ -2,6 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
 #include <optional>
+#include <sstream>
 
 #include "types.h"
 #include "logging.h"
@@ -68,18 +69,19 @@ class Request {
   void AddSize(size_t size) { request_size_ += size; }
 
   void PrintRequest() const {
-    CAMILLE_DEBUG("Method: {}", method_);
-    CAMILLE_DEBUG("Uri: {}", path_);
-    CAMILLE_DEBUG("Version: {}", version_);
-    CAMILLE_DEBUG("Host: {}", host_);
-    CAMILLE_DEBUG("Port: {}", port_);
+    std::stringstream stream;
+    stream << "Method: " << method_ << "\n"
+           << "Uri:    " << path_ << "\n"
+           << "Ver:    " << version_ << "\n"
+           << "Host:   " << host_ << ":" << port_ << "\n"
+           << "Headers:\n";
     for (const auto& [key, value] : headers_) {
-      CAMILLE_DEBUG("Header Key: {}", key);
-      CAMILLE_DEBUG("Header Value: {}", value);
+      stream << "  " << key << ": " << value << "\n";
     }
-    CAMILLE_DEBUG("Size: {}", request_size_);
-    CAMILLE_DEBUG("Content-Length: {}", content_length_);
-    CAMILLE_DEBUG("Body: {}", body_);
+    stream << "Size:           " << request_size_ << " bytes\n"
+           << "Content-Length: " << content_length_ << "\n"
+           << "Body:           " << (body_.empty() ? "[empty]" : body_) << "\n";
+    CAMILLE_DEBUG("{}", stream.str());
   }
 
  private:
