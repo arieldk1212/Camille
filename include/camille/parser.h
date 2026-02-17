@@ -197,15 +197,14 @@ class Parser {
    * @return std::expected<T, error::Errors>
    */
   template <concepts::IsReqResType T>
-  [[nodiscard]] std::expected<T, error::Errors> Parse(T& dtype,
-                                                      std::string_view data,
-                                                      bool is_partial = false) {
+  [[nodiscard]] std::optional<error::Errors> Parse(T& dtype,
+                                                   std::string_view data,
+                                                   bool is_partial = false) {
     if (data.empty()) {
       error_ = error::Errors::kBadRequest;
-      return std::unexpected(error_);
+      return error_;
     }
 
-    rocky_.begin = data.cbegin();
     rocky_.end = data.cend();
     rocky_.data = data;
     total_consumed_ = data.size();
@@ -215,12 +214,15 @@ class Parser {
      */
     if (is_partial) {
       current_state_ = States::kBodyIdentify;
+      rocky_.begin = data.cbegin() + body_start_offset_;
+    } else {
+      rocky_.begin = data.cbegin() + total_consumed_;
     }
 
     while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {
       if (IsDataEnd() && current_state_ == States::kBodyValidation) {
         error_ = error::Errors::kPartialMessage;
-        return std::unexpected(error_);
+        return error_;
       }
 
       switch (current_state_) {
@@ -310,8 +312,8 @@ class Parser {
               current_state_ = States::kComplete;
               dtype.SetSize(total_consumed_);
               SetUsed();
-              return dtype;
             }
+            body_start_offset_ = std::distance(data.cbegin(), rocky_.begin);
             current_state_ = States::kBodyValidation;
           } else {
             error_ = error::Errors::kBadRequest;
@@ -349,7 +351,6 @@ class Parser {
             current_state_ = States::kComplete;
             dtype.SetSize(total_consumed_);
             SetUsed();
-            return dtype;
           }
         } break;
 
@@ -359,7 +360,6 @@ class Parser {
           //   current_state_ = States::kComplete;
           //   dtype.SetSize(total_consumed_);
           //   SetUsed();
-          //   return dtype;
           // }
           error_ = error::Errors::kBadBody;
           current_state_ = States::kGarbage;
@@ -371,17 +371,16 @@ class Parser {
           //   return std::unexpected(error::Errors::kStaleParser);
           // }
           dtype.SetSize(total_consumed_);
-          return dtype;
 
         case States::kGarbage:
-          return std::unexpected(error_);
+          return error_;
           break;
 
         default:
-          return std::unexpected(error::Errors::kDefault);
+          return error::Errors::kDefault;
       }
     }
-    return std::unexpected(error_);
+    return error_;
   }
 
  private:
@@ -583,6 +582,7 @@ class Parser {
   Rocky rocky_;
   bool used_{false};
   size_t total_consumed_{0};
+  size_t body_start_offset_{0};
   States current_state_{States::kReady};
   error::Errors error_{error::Errors::kDefault};
 };

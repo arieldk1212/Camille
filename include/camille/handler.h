@@ -1,6 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 #define CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 
+#include <expected>
 #include <optional>
 
 #include "error.h"
@@ -21,25 +22,31 @@ class RequestHandler {
 
   void PrintRequest() const { request_.PrintRequest(); }
 
-  ParseResponse<request::Request> Parse(std::string_view data, bool is_partial = false) {
+  std::expected<request::Request, error::Errors> Parse(std::string_view data,
+                                                       bool is_partial = false) {
     auto req = parser_.Parse<request::Request>(request_, data, is_partial);
-    // INFO: apperantly the return value does a problem.
-    // request_ = req.value();  // reassign??
+    /**
+     * ISSUES:
+     1. the req overwritten or removed so data isn't persistent.
+     2. the ptr to the begin is pointing to the beginning of the whole request and not at the start
+     of the body.
+     */
 
     if (req.has_value()) {
-      if (parser_.GetErrorCode() == error::Errors::kDefault)
-        return {req.value(), error::Errors::kDefault};
+      if (parser_.GetErrorCode() == error::Errors::kDefault) {
+        return request_;
+      }
       if (is_partial && parser_.GetErrorCode() == error::Errors::kPartialMessage) {
-        return {req.value(), error::Errors::kDefault};
+        return request_;
       }
     }
 
-    if (req.error() == error::Errors::kPartialMessage) {
-      return {std::nullopt, req.error()};
+    if (req.value() == error::Errors::kPartialMessage) {
+      return std::unexpected(req.value());
     }
 
-    CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(req.error()));
-    return {std::nullopt, req.error()};
+    CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(req.value()));
+    return std::unexpected(req.value());
   }
 
  private:

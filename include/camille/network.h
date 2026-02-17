@@ -52,20 +52,32 @@ class Session : public std::enable_shared_from_this<Session> {
         //     asio::buffers_begin(buffer),
         //     std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
 
-        auto [request, error] = self_request_handler.Parse(data);
-        if (request.has_value()) {
-          self_request_handler.PrintRequest();
-        } else if (error.value() == error::Errors::kPartialMessage) {
-          auto [request, error] = self_request_handler.Parse(data, true);
-          if (request.has_value()) {
-            self_request_handler.PrintRequest();
+        // auto result = self_request_handler.Parse(data);
+        // if (result.has_value()) {
+        //   self_request_handler.PrintRequest();
+
+        // } else if (result.error() == error::Errors::kPartialMessage) {
+        //   auto result = self_request_handler.Parse(data, true);
+        //   if (result.has_value()) {
+        //     self_request_handler.PrintRequest();
+        //   }
+        // } else {
+        //   CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error()));
+        // }
+
+        auto result = self_request_handler.Parse(data);
+        if (!result) {
+          if (result.error() == error::Errors::kPartialMessage) {
+            self->DoRead();
+            return;
           }
-        } else {
-          CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(error.value()));
+          CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error()));
         }
 
+        self_request_handler.PrintRequest();
         self->stream_buffer_.consume(bytes);
         self->DoWrite(bytes);
+
       } else if (error_code == asio::error::eof) {
         CAMILLE_WARNING("Session ended");
       }
