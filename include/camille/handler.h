@@ -12,20 +12,30 @@
 namespace camille {
 namespace handler {
 
+template <typename T>
+using ParseResponse = std::pair<std::optional<T>, std::optional<error::Errors>>;
+
 class RequestHandler {
  public:
   RequestHandler() = default;
 
-  std::pair<std::optional<request::Request>, std::optional<error::Errors>> Parse(
-      std::string_view data) {
-    auto req = parser_.Parse<request::Request>(data);
+  void PrintRequest() const { request_.PrintRequest(); }
 
-    if (!parser_ && req.error() == error::Errors::kPartialMessage) {
-      return {std::nullopt, req.error()};
+  ParseResponse<request::Request> Parse(std::string_view data, bool is_partial = false) {
+    auto req = parser_.Parse<request::Request>(request_, data, is_partial);
+    // INFO: apperantly the return value does a problem.
+    // request_ = req.value();  // reassign??
+
+    if (req.has_value()) {
+      if (parser_.GetErrorCode() == error::Errors::kDefault)
+        return {req.value(), error::Errors::kDefault};
+      if (is_partial && parser_.GetErrorCode() == error::Errors::kPartialMessage) {
+        return {req.value(), error::Errors::kDefault};
+      }
     }
 
-    if (req.has_value() && parser_.GetErrorCode() == error::Errors::kDefault) {
-      return {req.value(), error::Errors::kDefault};
+    if (req.error() == error::Errors::kPartialMessage) {
+      return {std::nullopt, req.error()};
     }
 
     CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(req.error()));
@@ -34,24 +44,26 @@ class RequestHandler {
 
  private:
   parser::Parser parser_;
+  request::Request request_;
 };
 
 class ResponseHandler {
  public:
   ResponseHandler() = default;
 
-  std::optional<response::Response> Parse(std::string_view data) {
-    auto res = parser_.Parse<response::Response>(data);
+  auto Parse(std::string_view data) -> ParseResponse<response::Response> {
+    auto res = parser_.Parse<response::Response>(response_, data);
     if (!parser_) {
       CAMILLE_ERROR("Response parsing error: {}",
                     static_cast<std::uint8_t>(parser_.GetErrorCode()));
-      return std::nullopt;
+      // return std::nullopt;
     }
-    return res.value();
+    // return res.value();
   }
 
  private:
   parser::Parser parser_;
+  response::Response response_;
 };
 
 };  // namespace handler

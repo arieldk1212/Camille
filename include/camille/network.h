@@ -54,9 +54,12 @@ class Session : public std::enable_shared_from_this<Session> {
 
         auto [request, error] = self_request_handler.Parse(data);
         if (request.has_value()) {
-          request.value().PrintRequest();
+          self_request_handler.PrintRequest();
         } else if (error.value() == error::Errors::kPartialMessage) {
-          // auto [request, error] = self_request_handler.Parse(data, States::)
+          auto [request, error] = self_request_handler.Parse(data, true);
+          if (request.has_value()) {
+            self_request_handler.PrintRequest();
+          }
         } else {
           CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(error.value()));
         }

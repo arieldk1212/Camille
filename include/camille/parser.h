@@ -1,16 +1,16 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_PARSER_H_
 #define CAMILLE_INCLUDE_CAMILLE_PARSER_H_
 
-#include "infra.h"
-#include "types.h"
-#include "concepts.h"
-#include "error.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <array>
 #include <expected>
 #include <string_view>
+
+#include "infra.h"
+#include "types.h"
+#include "concepts.h"
+#include "error.h"
 
 /**
 For validation:
@@ -34,8 +34,6 @@ namespace parser {
 
 enum class States : std::uint8_t {
   kReady,
-  // kFileUpload,
-  // kDataUpload,
   kMethod,
   kWaitUri,
   kUriStart,
@@ -47,6 +45,8 @@ enum class States : std::uint8_t {
   kBodyValidation,
   kBodyIdentify,
   kBodyChunked,
+  // kFileUpload,
+  // kDataUpload,
   kComplete,
   kGarbage
 };
@@ -197,20 +197,28 @@ class Parser {
    * @return std::expected<T, error::Errors>
    */
   template <concepts::IsReqResType T>
-  [[nodiscard]] std::expected<T, error::Errors> Parse(std::string_view data, States state) {
+  [[nodiscard]] std::expected<T, error::Errors> Parse(T& dtype,
+                                                      std::string_view data,
+                                                      bool is_partial = false) {
     if (data.empty()) {
       error_ = error::Errors::kBadRequest;
       return std::unexpected(error_);
     }
 
-    T dtype;
     rocky_.begin = data.cbegin();
     rocky_.end = data.cend();
     rocky_.data = data;
     total_consumed_ = data.size();
 
+    /**
+     * @brief If true, can consume more, therefore we keep on going.
+     */
+    if (is_partial) {
+      current_state_ = States::kBodyIdentify;
+    }
+
     while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {
-      if (IsDataEnd()) {
+      if (IsDataEnd() && current_state_ == States::kBodyValidation) {
         error_ = error::Errors::kPartialMessage;
         return std::unexpected(error_);
       }
@@ -327,6 +335,7 @@ class Parser {
             current_state_ = States::kBodyIdentify;
             break;
           } else if (te_header.has_value()) {
+            // TODO: do it after we finish the content length scenario
             current_state_ = States::kBodyChunked;
 
             error_ = error::Errors::kBadRequest;
@@ -558,8 +567,8 @@ class Parser {
       return false;
     }
 
-    std::string_view body_date(pos, expected_length);
-    dtype.SetBody(body_date);
+    std::string_view body_data(pos, expected_length);
+    dtype.SetBody(body_data);
     pos += expected_length;
 
     return true;

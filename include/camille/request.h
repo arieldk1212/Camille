@@ -70,7 +70,8 @@ class Request {
 
   void PrintRequest() const {
     std::stringstream stream;
-    stream << "Method: " << method_ << "\n"
+    stream << "*Request Data*\n"
+           << "Method: " << method_ << "\n"
            << "Uri:    " << path_ << "\n"
            << "Ver:    " << version_ << "\n"
            << "Host:   " << host_ << ":" << port_ << "\n"
