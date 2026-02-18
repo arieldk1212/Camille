@@ -1,6 +1,7 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
+#include "asio/completion_condition.hpp"
 #include "error.h"
 #include "types.h"
 #include "logging.h"
@@ -43,32 +44,21 @@ class Session : public std::enable_shared_from_this<Session> {
 
     void operator()(const std::error_code& error_code, size_t bytes) {
       if (!error_code) {
-        asio::streambuf::const_buffers_type buffer = self->stream_buffer_.data();
-
-        std::string_view data(static_cast<const char*>(buffer.data()),
+        std::string_view data(static_cast<const char*>(self->stream_buffer_.data().data()),
                               static_cast<std::ptrdiff_t>(bytes));
-
-        // std::string data(
-        //     asio::buffers_begin(buffer),
-        //     std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
-
-        // auto result = self_request_handler.Parse(data);
-        // if (result.has_value()) {
-        //   self_request_handler.PrintRequest();
-
-        // } else if (result.error() == error::Errors::kPartialMessage) {
-        //   auto result = self_request_handler.Parse(data, true);
-        //   if (result.has_value()) {
-        //     self_request_handler.PrintRequest();
-        //   }
-        // } else {
-        //   CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error()));
-        // }
-
+        /**
+         * ISSUE: there are cases when one read is enough to also get the body itself and no need to
+         * wait for the data to arrive.
+         * SOLVE: we need to check if the distance between begin and end == content length, if yes
+         * no need to run again, if no we return kPartialMessage.
+         */
         auto result = self_request_handler.Parse(data);
         if (!result) {
           if (result.error() == error::Errors::kPartialMessage) {
-            self->DoRead();
+            auto body_size = result->ContentLength();
+            self->DoReadUntilSize(body_size);  // if has body we read until the end
+            auto result = self_request_handler.Parse(data, true);  // parse again for the body
+            // part
             return;
           }
           CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error()));
@@ -79,7 +69,7 @@ class Session : public std::enable_shared_from_this<Session> {
         self->DoWrite(bytes);
 
       } else if (error_code == asio::error::eof) {
-        CAMILLE_WARNING("Session ended");
+        CAMILLE_DEBUG("Session ended");
       }
     }
 
@@ -120,6 +110,11 @@ class Session : public std::enable_shared_from_this<Session> {
     // request_handler_});
   }
 
+  void DoReadUntilSize(size_t bytes_to_consume) {
+    asio::async_read(*socket_, stream_buffer_, asio::transfer_exactly(bytes_to_consume),
+                     ReadHandler{shared_from_this(), request_handler_});
+  }
+
   void DoWrite(std::size_t bytes_to_write) {
     asio::async_write(*socket_, stream_buffer_,
                       WriteHandler(shared_from_this(), bytes_to_write, response_handler_));
@@ -130,7 +125,7 @@ class Session : public std::enable_shared_from_this<Session> {
    */
   void DoWait();
 
-  bool state_{false};
+  bool state_{false};  // i added it to solve the problem of dependency injection with the
   handler::RequestHandler request_handler_;
   handler::ResponseHandler response_handler_;
   types::aio::AsioIOStreamBuffer stream_buffer_;

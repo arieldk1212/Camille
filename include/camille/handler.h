@@ -25,22 +25,14 @@ class RequestHandler {
   std::expected<request::Request, error::Errors> Parse(std::string_view data,
                                                        bool is_partial = false) {
     auto req = parser_.Parse<request::Request>(request_, data, is_partial);
-    /**
-     * ISSUES:
-     1. the req overwritten or removed so data isn't persistent.
-     2. the ptr to the begin is pointing to the beginning of the whole request and not at the start
-     of the body.
-     */
 
+    // TODO: we need to make this better, the return statements from the parser..
     if (req.has_value()) {
-      if (parser_.GetErrorCode() == error::Errors::kDefault) {
-        return request_;
-      }
-      if (is_partial && parser_.GetErrorCode() == error::Errors::kPartialMessage) {
+      if ((parser_.GetErrorCode() == error::Errors::kDefault) ||
+          (is_partial && parser_.GetErrorCode() == error::Errors::kPartialMessage)) {
         return request_;
       }
     }
-
     if (req.value() == error::Errors::kPartialMessage) {
       return std::unexpected(req.value());
     }

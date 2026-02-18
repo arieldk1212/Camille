@@ -205,6 +205,7 @@ class Parser {
       return error_;
     }
 
+    rocky_.begin = data.cbegin();
     rocky_.end = data.cend();
     rocky_.data = data;
     total_consumed_ = data.size();
@@ -216,7 +217,6 @@ class Parser {
       current_state_ = States::kBodyIdentify;
       rocky_.begin = data.cbegin() + body_start_offset_;
     } else {
-      rocky_.begin = data.cbegin() + total_consumed_;
     }
 
     while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {

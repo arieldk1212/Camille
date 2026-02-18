@@ -54,7 +54,6 @@ class Request {
         ++dup;
       }
     }
-
     if (dup == 1) {
       return header_value;
     }
