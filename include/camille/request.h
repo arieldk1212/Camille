@@ -63,6 +63,9 @@ class Request {
   [[nodiscard]] bool Auth() const { return has_auth_; }
   void SetAuth(bool auth) { has_auth_ = auth; }
 
+  [[nodiscard]] bool IsPartial() const { return is_partial_; }
+  void SetPartial(bool state) { is_partial_ = true; }
+
   [[nodiscard]] size_t Size() const { return request_size_; }
   void SetSize(size_t size) { request_size_ = size; }
   void AddSize(size_t size) { request_size_ += size; }
@@ -95,6 +98,7 @@ class Request {
   types::camille::CamilleHeaders headers_;
 
   bool has_auth_{false};
+  bool is_partial_{false};
   size_t request_size_{0};
 };
 

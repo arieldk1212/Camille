@@ -1,8 +1,11 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 #define CAMILLE_INCLUDE_CAMILLE_INFRA_H_
 
+#include <functional>
 #include <string>
 #include <cstdint>
+#include <unordered_set>
+#include "camille/types.h"
 
 namespace camille {
 
@@ -51,10 +54,7 @@ enum class Methods : std::uint8_t {
   kUnknown
 };
 
-static constexpr Methods MethodEnum(std::string_view method) {
-  /**
-   * @brief Cannot switch-case on string_view
-   */
+[[nodiscard]] static constexpr Methods MethodEnum(std::string_view method) {
   if (method == "GET") {
     return Methods::kGet;
   }
@@ -83,6 +83,26 @@ static constexpr Methods MethodEnum(std::string_view method) {
     return Methods::kConnect;
   }
   return Methods::kUnknown;
+}
+
+[[nodiscard]] static constexpr bool AllowBody(std::string_view method) {
+  /**
+   * @brief Checks if the method parameter is a viable method for body consumption
+   */
+  if (method.empty()) {
+    return false;
+  }
+
+  switch (method[0]) {
+    case 'P':
+      return method == "POST" || method == "PUT" || method == "PATCH";
+    case 'G':
+      return false;
+    case 'D':
+      return false;
+    default:
+      return false;
+  }
 }
 
 // TODO: need to fill the rest, change the name to the error itself

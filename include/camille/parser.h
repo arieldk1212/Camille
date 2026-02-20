@@ -220,7 +220,9 @@ class Parser {
     }
 
     while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {
-      if (IsDataEnd() && current_state_ == States::kBodyValidation) {
+      if (IsDataEnd() &&
+          (current_state_ == States::kBodyIdentify || current_state_ == States::kBodyChunked) &&
+          !is_partial) {
         error_ = error::Errors::kPartialMessage;
         return error_;
       }
@@ -308,7 +310,7 @@ class Parser {
               break;
             }
             auto cl_header = dtype.GetHeader(infra::headers::kContentLength);
-            if (!cl_header.has_value()) {
+            if (!cl_header.has_value() || !infra::AllowBody(dtype.Method())) {
               current_state_ = States::kComplete;
               dtype.SetSize(total_consumed_);
               SetUsed();
@@ -351,6 +353,9 @@ class Parser {
             current_state_ = States::kComplete;
             dtype.SetSize(total_consumed_);
             SetUsed();
+          } else {
+            error_ = error::Errors::kBadBody;
+            current_state_ = States::kGarbage;
           }
         } break;
 
@@ -560,6 +565,11 @@ class Parser {
    */
   template <concepts::IsReqResType T>
   static bool ParseBodyIdentify(auto& pos, It end, T& dtype, size_t expected_length) {
+    /**
+     * @todo
+     * here run the end iterator till the end of the expected_length, then run the rest of
+     * the function
+     */
     auto available = static_cast<size_t>(end - pos);
 
     if (available < expected_length) {

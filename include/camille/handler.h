@@ -33,8 +33,11 @@ class RequestHandler {
         return request_;
       }
     }
+
     if (req.value() == error::Errors::kPartialMessage) {
-      return std::unexpected(req.value());
+      request_.SetPartial(true);
+      // return std::unexpected(req.value());
+      return request_;
     }
 
     CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(req.value()));

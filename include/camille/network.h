@@ -46,21 +46,13 @@ class Session : public std::enable_shared_from_this<Session> {
       if (!error_code) {
         std::string_view data(static_cast<const char*>(self->stream_buffer_.data().data()),
                               static_cast<std::ptrdiff_t>(bytes));
-        /**
-         * ISSUE: there are cases when one read is enough to also get the body itself and no need to
-         * wait for the data to arrive.
-         * SOLVE: we need to check if the distance between begin and end == content length, if yes
-         * no need to run again, if no we return kPartialMessage.
-         */
         auto result = self_request_handler.Parse(data);
-        if (!result) {
-          if (result.error() == error::Errors::kPartialMessage) {
-            auto body_size = result->ContentLength();
-            self->DoReadUntilSize(body_size);  // if has body we read until the end
-            auto result = self_request_handler.Parse(data, true);  // parse again for the body
-            // part
-            return;
-          }
+
+        if (result.has_value() && result->IsPartial()) {
+          auto body_size = result->ContentLength();
+          self->DoReadUntilSize(body_size);
+          auto result = self_request_handler.Parse(data, true);
+        } else if (!result) {
           CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error()));
         }
 
@@ -106,8 +98,6 @@ class Session : public std::enable_shared_from_this<Session> {
   void DoRead() {
     asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n",
                            ReadHandler{shared_from_this(), request_handler_});
-    // asio::async_read(*socket_, stream_buffer_, ReadHandler{shared_from_this(),
-    // request_handler_});
   }
 
   void DoReadUntilSize(size_t bytes_to_consume) {
