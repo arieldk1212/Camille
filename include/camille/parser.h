@@ -207,7 +207,7 @@ class Parser {
 
     rocky_.begin = data.cbegin();
     rocky_.end = data.cend();
-    rocky_.data = data;
+    rocky_.data = data;  // TODO: change to data.data(), if we dont, data wont consume the body.
     total_consumed_ = data.size();
 
     /**
