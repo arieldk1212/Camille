@@ -215,8 +215,6 @@ class Parser {
      */
     if (is_partial) {
       current_state_ = States::kBodyIdentify;
-      rocky_.begin = data.cbegin() + body_start_offset_;
-    } else {
     }
 
     while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {
@@ -315,7 +313,6 @@ class Parser {
               dtype.SetSize(total_consumed_);
               SetUsed();
             }
-            body_start_offset_ = std::distance(data.cbegin(), rocky_.begin);
             current_state_ = States::kBodyValidation;
           } else {
             error_ = error::Errors::kBadRequest;
@@ -351,6 +348,7 @@ class Parser {
           size_t expected_length = dtype.ContentLength();
           if (ParseBodyIdentify(rocky_.begin, rocky_.end, dtype, expected_length)) {
             current_state_ = States::kComplete;
+            total_consumed_ += expected_length;
             dtype.SetSize(total_consumed_);
             SetUsed();
           } else {
@@ -385,7 +383,10 @@ class Parser {
           return error::Errors::kDefault;
       }
     }
-    return error_;
+    if (current_state_ == States::kComplete) {
+      error_ = error::Errors::kDefault;
+      return error_;
+    }
   }
 
  private:
@@ -565,11 +566,28 @@ class Parser {
    */
   template <concepts::IsReqResType T>
   static bool ParseBodyIdentify(auto& pos, It end, T& dtype, size_t expected_length) {
-    /**
-     * @todo
-     * here run the end iterator till the end of the expected_length, then run the rest of
-     * the function
-     */
+    // pos == rocky.begin -> currently at start buffer of data but with the body included.
+    // end == rocky.end -> currently at the start of the body.
+    // rocky_.begin = data.cbegin() + body_start_offset_;
+
+    size_t body_consumed{0};
+    if (*end == '{') {
+      while (*end != '}') {
+        ++end;
+        ++body_consumed;
+      }
+      if (*end == '}') {
+        ++end;
+        ++body_consumed;
+      }
+    }
+
+    if (body_consumed != expected_length) {
+      return false;
+    }
+
+    pos = end - body_consumed;
+
     auto available = static_cast<size_t>(end - pos);
 
     if (available < expected_length) {
@@ -592,7 +610,6 @@ class Parser {
   Rocky rocky_;
   bool used_{false};
   size_t total_consumed_{0};
-  size_t body_start_offset_{0};
   States current_state_{States::kReady};
   error::Errors error_{error::Errors::kDefault};
 };
