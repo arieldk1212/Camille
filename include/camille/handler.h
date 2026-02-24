@@ -4,6 +4,7 @@
 #include <expected>
 #include <optional>
 
+#include "camille/infra.h"
 #include "error.h"
 #include "logging.h"
 #include "request.h"
@@ -22,26 +23,23 @@ class RequestHandler {
 
   void PrintRequest() const { request_.PrintRequest(); }
 
-  std::expected<request::Request, error::Errors> Parse(std::string_view data,
-                                                       bool is_partial = false) {
-    auto req = parser_.Parse<request::Request>(request_, data, is_partial);
+  std::expected<request::Request, std::pair<infra::States, error::Errors>> Parse(
+      std::string_view data, bool is_partial = false) {
+    auto parse_result = parser_.Parse<request::Request>(request_, data, is_partial);
 
-    // TODO: we need to make this better, the return statements from the parser..
-    if (req.has_value()) {
-      if ((parser_.GetErrorCode() == error::Errors::kDefault) ||
-          (is_partial && parser_.GetErrorCode() == error::Errors::kPartialMessage)) {
+    if (!parser_) {
+      if ((parse_result.first == infra::States::kBodyChunked ||
+           parse_result.first == infra::States::kBodyIdentify) &&
+          parse_result.second == error::Errors::kPartialMessage) {
+        if (is_partial) {
+          request_.SetPartial(true);
+        }
         return request_;
       }
+      CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(parse_result.second));
+      return std::unexpected(parse_result);
     }
-
-    if (req.value() == error::Errors::kPartialMessage) {
-      request_.SetPartial(true);
-      // return std::unexpected(req.value());
-      return request_;
-    }
-
-    CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(req.value()));
-    return std::unexpected(req.value());
+    return request_;
   }
 
  private:
@@ -56,8 +54,8 @@ class ResponseHandler {
   auto Parse(std::string_view data) -> ParseResponse<response::Response> {
     auto res = parser_.Parse<response::Response>(response_, data);
     if (!parser_) {
-      CAMILLE_ERROR("Response parsing error: {}",
-                    static_cast<std::uint8_t>(parser_.GetErrorCode()));
+      // CAMILLE_ERROR("Response parsing error: {}",
+      //               static_cast<std::uint8_t>(parser_.GetErrorCode()));
       // return std::nullopt;
     }
     // return res.value();

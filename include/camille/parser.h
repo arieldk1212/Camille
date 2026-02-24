@@ -13,14 +13,6 @@
 #include "error.h"
 
 /**
-For validation:
-8. Content-Length and Status Code must be 0-9 digit only!
-10. If Content-Length is invalid (e.g., 123, 456), you must throw an error. Never "guess" which
-length is correct.
-13. Request Smuggling prevention.
-*/
-
-/**
  * @todo
  * 1. make the parser generic for file uploads, json (via templates), use a constexpr model for the
  * size limits and other restrictions.
@@ -31,25 +23,6 @@ length is correct.
 
 namespace camille {
 namespace parser {
-
-enum class States : std::uint8_t {
-  kReady,
-  kMethod,
-  kWaitUri,
-  kUriStart,
-  kUri,
-  kWaitVersion,
-  kVersion,
-  kHeadersWait,
-  kHeaders,
-  kBodyValidation,
-  kBodyIdentify,
-  kBodyChunked,
-  // kFileUpload,
-  // kDataUpload,
-  kComplete,
-  kGarbage
-};
 
 static constexpr std::uint64_t kTableLimit = 256;
 static constexpr std::uint64_t kBodyLimit = 64 * 1024;
@@ -187,8 +160,14 @@ class Parser {
  public:
   Parser() = default;
 
-  explicit operator bool() const noexcept { return current_state_ == States::kComplete; }
-  [[nodiscard]] error::Errors GetErrorCode() const noexcept { return error_; }
+  /**
+   * @brief Method to decide if the parser has completed the job
+   * @return true if state is kComplete and the error is kDefault
+   * @return false otherwise
+   */
+  explicit operator bool() const noexcept {
+    return current_state_ == infra::States::kComplete && error_ == error::Errors::kDefault;
+  }
 
   /**
    * @brief Parse function for incoming request/response data
@@ -197,195 +176,195 @@ class Parser {
    * @return std::expected<T, error::Errors>
    */
   template <concepts::IsReqResType T>
-  [[nodiscard]] std::optional<error::Errors> Parse(T& dtype,
-                                                   std::string_view data,
-                                                   bool is_partial = false) {
+  [[nodiscard]] std::pair<infra::States, error::Errors> Parse(T& dtype,
+                                                              std::string_view data,
+                                                              bool is_partial = false) {
     if (data.empty()) {
       error_ = error::Errors::kBadRequest;
-      return error_;
+      current_state_ = infra::States::kGarbage;
+      return {current_state_, error_};
     }
 
     rocky_.begin = data.cbegin();
     rocky_.end = data.cend();
-    rocky_.data = data;  // TODO: change to data.data(), if we dont, data wont consume the body.
+    rocky_.data = data.data();  // .data() consumes the body
     total_consumed_ = data.size();
 
-    /**
-     * @brief If true, can consume more, therefore we keep on going.
-     */
     if (is_partial) {
-      current_state_ = States::kBodyIdentify;
+      current_state_ = infra::States::kBodyIdentify;
     }
 
-    while (current_state_ != States::kComplete && current_state_ != States::kGarbage) {
+    while (current_state_ != infra::States::kComplete &&
+           current_state_ != infra::States::kGarbage) {
       if (IsDataEnd() &&
-          (current_state_ == States::kBodyIdentify || current_state_ == States::kBodyChunked) &&
+          (current_state_ == infra::States::kBodyIdentify ||
+           current_state_ == infra::States::kBodyChunked) &&
           !is_partial) {
         error_ = error::Errors::kPartialMessage;
-        return error_;
+        return {current_state_, error_};
       }
 
       switch (current_state_) {
-        case States::kReady:
+        case infra::States::kReady:
           if (used_) {
             error_ = error::Errors::kStaleParser;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
-          current_state_ = States::kMethod;
+          current_state_ = infra::States::kMethod;
           break;
 
-        case States::kMethod:
+        case infra::States::kMethod:
           if (!ParseMethod(rocky_.begin, rocky_.end, dtype)) {
             error_ = error::Errors::kBadMethod;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           } else {
-            current_state_ = States::kWaitUri;
+            current_state_ = infra::States::kWaitUri;
           }
           break;
 
-        case States::kWaitUri:
+        case infra::States::kWaitUri:
           if (IsSpace(*rocky_.begin)) {
             ++rocky_.begin;
-            current_state_ = States::kUriStart;
+            current_state_ = infra::States::kUriStart;
           } else {
             error_ = error::Errors::kBadRequest;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
           break;
 
-        case States::kUriStart:
+        case infra::States::kUriStart:
           if (IsSlash(*rocky_.begin)) {
-            current_state_ = States::kUri;
+            current_state_ = infra::States::kUri;
           } else {
             error_ = error::Errors::kBadUri;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
           break;
 
-        case States::kUri:
+        case infra::States::kUri:
           if (!ParseUri(rocky_.begin, rocky_.end, dtype)) {
             error_ = error::Errors::kBadUri;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           } else {
-            current_state_ = States::kWaitVersion;
+            current_state_ = infra::States::kWaitVersion;
           }
           break;
 
-        case States::kWaitVersion:
+        case infra::States::kWaitVersion:
           if (IsSpace(*rocky_.begin)) {
             ++rocky_.begin;
-            current_state_ = States::kVersion;
+            current_state_ = infra::States::kVersion;
           } else {
             error_ = error::Errors::kBadRequest;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
           break;
 
-        case States::kVersion:
+        case infra::States::kVersion:
           if (!ParseVersion(rocky_.begin, rocky_.end, dtype)) {
             error_ = error::Errors::kBadVersion;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           } else {
-            current_state_ = States::kHeadersWait;
+            current_state_ = infra::States::kHeadersWait;
           }
           break;
 
-        case States::kHeadersWait:
+        case infra::States::kHeadersWait:
           if (IsLF(*rocky_.begin)) {
             ++rocky_.begin;
-            current_state_ = States::kHeaders;
+            current_state_ = infra::States::kHeaders;
           } else {
             error_ = error::Errors::kPartialMessage;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
           break;
 
-        case States::kHeaders: {
+        case infra::States::kHeaders: {
           if (ParseHeaders(rocky_.begin, rocky_.end, dtype)) {
             if (!dtype.GetHeader(infra::headers::kHost).has_value()) {
               error_ = error::Errors::kBadRequest;
-              current_state_ = States::kGarbage;
+              current_state_ = infra::States::kGarbage;
               break;
             }
             auto cl_header = dtype.GetHeader(infra::headers::kContentLength);
             if (!cl_header.has_value() || !infra::AllowBody(dtype.Method())) {
-              current_state_ = States::kComplete;
+              current_state_ = infra::States::kComplete;
               dtype.SetSize(total_consumed_);
               SetUsed();
             }
-            current_state_ = States::kBodyValidation;
+            current_state_ = infra::States::kBodyValidation;
           } else {
             error_ = error::Errors::kBadRequest;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
         } break;
 
-        case States::kBodyValidation: {
+        case infra::States::kBodyValidation: {
           auto cl_header = dtype.GetHeader(infra::headers::kContentLength);
           auto te_header = dtype.GetHeader(infra::headers::kTransferEncoding);
           if (cl_header.has_value() && te_header.has_value()) {
             error_ = error::Errors::kBadRequest;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           } else if (cl_header.has_value()) {
             auto content_length = ValidateContentLength(cl_header.value());
             if (!content_length) {
               error_ = error::Errors::kBadContentLength;
-              current_state_ = States::kGarbage;
+              current_state_ = infra::States::kGarbage;
             }
             dtype.SetContentLength(content_length.value());
-            current_state_ = States::kBodyIdentify;
+            current_state_ = infra::States::kBodyIdentify;
             break;
           } else if (te_header.has_value()) {
             // TODO: do it after we finish the content length scenario
-            current_state_ = States::kBodyChunked;
+            current_state_ = infra::States::kBodyChunked;
 
             error_ = error::Errors::kBadRequest;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
         } break;
 
-        case States::kBodyIdentify: {
+        case infra::States::kBodyIdentify: {
           size_t expected_length = dtype.ContentLength();
           if (ParseBodyIdentify(rocky_.begin, rocky_.end, dtype, expected_length)) {
-            current_state_ = States::kComplete;
+            current_state_ = infra::States::kComplete;
             total_consumed_ += expected_length;
             dtype.SetSize(total_consumed_);
             SetUsed();
           } else {
             error_ = error::Errors::kBadBody;
-            current_state_ = States::kGarbage;
+            current_state_ = infra::States::kGarbage;
           }
         } break;
 
-        case States::kBodyChunked: {
+        case infra::States::kBodyChunked: {
           // if (ParseBodyChunked(rocky_.begin, rocky_.end, dtype, expected_length) && IsDataEnd())
           // {
-          //   current_state_ = States::kComplete;
+          //   current_state_ = infra::States::kComplete;
           //   dtype.SetSize(total_consumed_);
           //   SetUsed();
           // }
           error_ = error::Errors::kBadBody;
-          current_state_ = States::kGarbage;
+          current_state_ = infra::States::kGarbage;
         } break;
 
-        case States::kComplete:
+        case infra::States::kComplete:
           SetUsed();
-          // if (!IsDataEnd()) {
-          //   return std::unexpected(error::Errors::kStaleParser);
-          // }
+          if (!IsDataEnd()) {
+            return {infra::States::kGarbage, error::Errors::kStaleParser};
+          }
           dtype.SetSize(total_consumed_);
 
-        case States::kGarbage:
-          return error_;
+        case infra::States::kGarbage:
+          return {infra::States::kGarbage, error_};
           break;
 
         default:
-          return error::Errors::kDefault;
+          return {infra::States::kReady, error::Errors::kDefault};
       }
     }
-    if (current_state_ == States::kComplete) {
+    if (current_state_ == infra::States::kComplete) {
       error_ = error::Errors::kDefault;
-      return error_;
+      return {current_state_, error_};
     }
   }
 
@@ -610,7 +589,7 @@ class Parser {
   Rocky rocky_;
   bool used_{false};
   size_t total_consumed_{0};
-  States current_state_{States::kReady};
+  infra::States current_state_{infra::States::kReady};
   error::Errors error_{error::Errors::kDefault};
 };
 

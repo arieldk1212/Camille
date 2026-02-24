@@ -11,6 +11,25 @@ namespace camille {
 
 namespace infra {
 
+enum class States : std::uint8_t {
+  kReady,
+  kMethod,
+  kWaitUri,
+  kUriStart,
+  kUri,
+  kWaitVersion,
+  kVersion,
+  kHeadersWait,
+  kHeaders,
+  kBodyValidation,
+  kBodyIdentify,
+  kBodyChunked,
+  // kFileUpload,
+  // kDataUpload,
+  kComplete,
+  kGarbage
+};
+
 namespace headers {
 /**
  * @todo add extra validation with the headers here (but what if someone adds a custom header? maybe

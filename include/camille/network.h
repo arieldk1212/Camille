@@ -46,14 +46,16 @@ class Session : public std::enable_shared_from_this<Session> {
       if (!error_code) {
         std::string_view data(static_cast<const char*>(self->stream_buffer_.data().data()),
                               static_cast<std::ptrdiff_t>(bytes));
+
         auto result = self_request_handler.Parse(data);
 
         if (result.has_value() && result->IsPartial()) {
           auto body_size = result->ContentLength();
-          self->DoReadUntilSize(body_size);
+          self->DoReadByBytes(body_size);
           auto result = self_request_handler.Parse(data, true);
         } else if (!result) {
-          CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error()));
+          CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error().second));
+          CAMILLE_ERROR("Parser Error State: {}", static_cast<std::uint8_t>(result.error().first));
         }
 
         self_request_handler.PrintRequest();
@@ -62,6 +64,8 @@ class Session : public std::enable_shared_from_this<Session> {
 
       } else if (error_code == asio::error::eof) {
         CAMILLE_DEBUG("Session ended");
+      } else {
+        CAMILLE_ERROR("Unexpected Session Error: {}", error_code.message());
       }
     }
 
@@ -100,7 +104,7 @@ class Session : public std::enable_shared_from_this<Session> {
                            ReadHandler{shared_from_this(), request_handler_});
   }
 
-  void DoReadUntilSize(size_t bytes_to_consume) {
+  void DoReadByBytes(size_t bytes_to_consume) {
     asio::async_read(*socket_, stream_buffer_, asio::transfer_exactly(bytes_to_consume),
                      ReadHandler{shared_from_this(), request_handler_});
   }
