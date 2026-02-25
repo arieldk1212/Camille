@@ -1,20 +1,12 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
-#include "asio/completion_condition.hpp"
-#include "error.h"
-#include "types.h"
 #include "logging.h"
 #include "handler.h"
 
-#include "asio/basic_streambuf.hpp"
-#include "asio/streambuf.hpp"
 #include "asio/read_until.hpp"
 #include "asio/read.hpp"
 #include "asio/write.hpp"
-
-#include <cstddef>
-#include <memory>
 
 namespace camille {
 namespace network {
@@ -43,30 +35,32 @@ class Session : public std::enable_shared_from_this<Session> {
           self_request_handler(request_handler) {}
 
     void operator()(const std::error_code& error_code, size_t bytes) {
-      if (!error_code) {
-        std::string_view data(static_cast<const char*>(self->stream_buffer_.data().data()),
-                              static_cast<std::ptrdiff_t>(bytes));
-
-        auto result = self_request_handler.Parse(data);
-
-        if (result.has_value() && result->IsPartial()) {
-          auto body_size = result->ContentLength();
-          self->DoReadByBytes(body_size);
-          auto result = self_request_handler.Parse(data, true);
-        } else if (!result) {
-          CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error().second));
-          CAMILLE_ERROR("Parser Error State: {}", static_cast<std::uint8_t>(result.error().first));
+      if (error_code) {
+        if (error_code == asio::error::eof) {
+          CAMILLE_DEBUG("Session ended");
+        } else {
+          CAMILLE_ERROR("Unexpected Session Error: {}", error_code.message());
         }
-
-        self_request_handler.PrintRequest();
-        self->stream_buffer_.consume(bytes);
-        self->DoWrite(bytes);
-
-      } else if (error_code == asio::error::eof) {
-        CAMILLE_DEBUG("Session ended");
-      } else {
-        CAMILLE_ERROR("Unexpected Session Error: {}", error_code.message());
+        return;
       }
+
+      auto bufs = self->stream_buffer_.data();
+      std::string_view data(static_cast<const char*>(bufs.data()), self->stream_buffer_.size());
+
+      auto result = self_request_handler.Parse(data);
+
+      if (result.has_value() && result->IsPartial()) {
+        auto body_size = result->ContentLength();
+        self->DoReadByBytes(body_size);
+        // auto result = self_request_handler.Parse(data, true);
+      } else if (!result) {
+        CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error().second));
+        CAMILLE_ERROR("Parser Error State: {}", static_cast<std::uint8_t>(result.error().first));
+      }
+
+      self_request_handler.PrintRequest();
+      self->stream_buffer_.consume(result->Size());
+      self->DoWrite(result->Size());
     }
 
     types::camille::CamilleShared<Session> self;

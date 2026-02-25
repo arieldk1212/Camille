@@ -291,6 +291,7 @@ class Parser {
               current_state_ = infra::States::kComplete;
               dtype.SetSize(total_consumed_);
               SetUsed();
+              break;
             }
             current_state_ = infra::States::kBodyValidation;
           } else {
@@ -325,7 +326,8 @@ class Parser {
 
         case infra::States::kBodyIdentify: {
           size_t expected_length = dtype.ContentLength();
-          if (ParseBodyIdentify(rocky_.begin, rocky_.end, dtype, expected_length)) {
+          if (ParseBodyIdentify(rocky_.begin, rocky_.end, dtype, expected_length,
+                                total_consumed_)) {
             current_state_ = infra::States::kComplete;
             total_consumed_ += expected_length;
             dtype.SetSize(total_consumed_);
@@ -366,6 +368,8 @@ class Parser {
       error_ = error::Errors::kDefault;
       return {current_state_, error_};
     }
+
+    return {current_state_, error_};  // default
   }
 
  private:
@@ -544,13 +548,10 @@ class Parser {
    * @param body_size - The size of the body (from content-length header)
    */
   template <concepts::IsReqResType T>
-  static bool ParseBodyIdentify(auto& pos, It end, T& dtype, size_t expected_length) {
-    // pos == rocky.begin -> currently at start buffer of data but with the body included.
-    // end == rocky.end -> currently at the start of the body.
-    // rocky_.begin = data.cbegin() + body_start_offset_;
-
+  static bool ParseBodyIdentify(
+      auto& pos, It end, T& dtype, size_t expected_length, size_t request_length) {
     size_t body_consumed{0};
-    if (*end == '{') {
+    if (end != nullptr && *end == '{') {
       while (*end != '}') {
         ++end;
         ++body_consumed;
@@ -570,7 +571,8 @@ class Parser {
     auto available = static_cast<size_t>(end - pos);
 
     if (available < expected_length) {
-      return false;
+      return false;  // not enough data, do we need to add a branching to only run again if we dont
+                     // have enough?
     }
 
     std::string_view body_data(pos, expected_length);

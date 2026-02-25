@@ -4,7 +4,7 @@
 #include <expected>
 #include <optional>
 
-#include "camille/infra.h"
+#include "infra.h"
 #include "error.h"
 #include "logging.h"
 #include "request.h"
@@ -31,9 +31,7 @@ class RequestHandler {
       if ((parse_result.first == infra::States::kBodyChunked ||
            parse_result.first == infra::States::kBodyIdentify) &&
           parse_result.second == error::Errors::kPartialMessage) {
-        if (is_partial) {
-          request_.SetPartial(true);
-        }
+        request_.SetPartial();
         return request_;
       }
       CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(parse_result.second));

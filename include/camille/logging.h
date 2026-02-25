@@ -1,11 +1,11 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_LOGGING_H_
 #define CAMILLE_INCLUDE_CAMILLE_LOGGING_H_
 
-#include "types.h"
-
 #include <print>
 #include <chrono>
 #include <format>
+
+#include "types.h"
 
 /**
  * @brief Camille Logging Functionality
