@@ -1,8 +1,10 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 #define CAMILLE_INCLUDE_CAMILLE_HANDLER_H_
 
+#include <expected>
 #include <optional>
 
+#include "infra.h"
 #include "error.h"
 #include "logging.h"
 #include "request.h"
@@ -21,25 +23,21 @@ class RequestHandler {
 
   void PrintRequest() const { request_.PrintRequest(); }
 
-  ParseResponse<request::Request> Parse(std::string_view data, bool is_partial = false) {
-    auto req = parser_.Parse<request::Request>(request_, data, is_partial);
-    // INFO: apperantly the return value does a problem.
-    // request_ = req.value();  // reassign??
+  std::expected<request::Request, std::pair<infra::States, error::Errors>> Parse(
+      std::string_view data, bool is_partial = false) {
+    auto parse_result = parser_.Parse<request::Request>(request_, data, is_partial);
 
-    if (req.has_value()) {
-      if (parser_.GetErrorCode() == error::Errors::kDefault)
-        return {req.value(), error::Errors::kDefault};
-      if (is_partial && parser_.GetErrorCode() == error::Errors::kPartialMessage) {
-        return {req.value(), error::Errors::kDefault};
+    if (!parser_) {
+      if ((parse_result.first == infra::States::kBodyChunked ||
+           parse_result.first == infra::States::kBodyIdentify) &&
+          parse_result.second == error::Errors::kPartialMessage) {
+        request_.SetPartial();
+        return request_;
       }
+      CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(parse_result.second));
+      return std::unexpected(parse_result);
     }
-
-    if (req.error() == error::Errors::kPartialMessage) {
-      return {std::nullopt, req.error()};
-    }
-
-    CAMILLE_ERROR("Request parsing error: {}", static_cast<std::uint8_t>(req.error()));
-    return {std::nullopt, req.error()};
+    return request_;
   }
 
  private:
@@ -54,8 +52,8 @@ class ResponseHandler {
   auto Parse(std::string_view data) -> ParseResponse<response::Response> {
     auto res = parser_.Parse<response::Response>(response_, data);
     if (!parser_) {
-      CAMILLE_ERROR("Response parsing error: {}",
-                    static_cast<std::uint8_t>(parser_.GetErrorCode()));
+      // CAMILLE_ERROR("Response parsing error: {}",
+      //               static_cast<std::uint8_t>(parser_.GetErrorCode()));
       // return std::nullopt;
     }
     // return res.value();

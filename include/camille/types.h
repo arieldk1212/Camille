@@ -9,7 +9,9 @@
 
 #include <memory>
 #include <string>
+#include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace camille {
@@ -38,12 +40,27 @@ template <typename VectorType>
 using CamilleVector = std::vector<VectorType>;
 
 /**
+ * @brief Camille Unordered Set
+ * @tparam SetType
+ */
+template <typename SetType>
+using CamilleUnorderedSet = std::unordered_set<SetType>;
+
+/**
  * @brief Camille Unordered Map
  * @tparam Unordered Map Key Type
  * @tparam Unordered Map Value Type
  */
 template <typename Key, typename Value>
 using CamilleUnorderedMap = std::unordered_map<Key, Value>;
+
+/**
+ * @brief Camille Map
+ * @tparam Map Key Type
+ * @tparam Map Value Type
+ */
+template <typename Key, typename Value>
+using CamilleMap = std::map<Key, Value>;
 
 /**
  * @brief Headers data structure

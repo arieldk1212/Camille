@@ -23,16 +23,17 @@ concept UnsignedIntegral = std::unsigned_integral<T>;
  */
 template <typename T>
 concept IsReqResType = requires(T val, std::string_view data, size_t size) {
+  {val.Method()}->std::same_as<std::string_view>;
+  {val.GetHeader(data)}->std::same_as<std::optional<std::string_view>>;
   {val.SetHost(data)}->std::same_as<void>;
   {val.SetPort(data)}->std::same_as<void>;
   {val.SetPath(data)}->std::same_as<void>;
   {val.SetBody(data)}->std::same_as<void>;
+  {val.SetSize(size)}->std::same_as<void>;
   {val.SetMethod(data)}->std::same_as<void>;
   {val.SetVersion(data)}->std::same_as<void>;
   {val.SetContentLength(size)}->std::same_as<void>;
   {val.AddHeader(data, data)}->std::same_as<void>;
-  {val.GetHeader(data)}->std::same_as<std::optional<std::string_view>>;
-  {val.SetSize(size)}->std::same_as<void>;
 };
 
 template <typename T>

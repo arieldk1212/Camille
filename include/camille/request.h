@@ -54,7 +54,6 @@ class Request {
         ++dup;
       }
     }
-
     if (dup == 1) {
       return header_value;
     }
@@ -63,6 +62,9 @@ class Request {
 
   [[nodiscard]] bool Auth() const { return has_auth_; }
   void SetAuth(bool auth) { has_auth_ = auth; }
+
+  [[nodiscard]] bool IsPartial() const { return is_partial_; }
+  void SetPartial() { is_partial_ = true; }
 
   [[nodiscard]] size_t Size() const { return request_size_; }
   void SetSize(size_t size) { request_size_ = size; }
@@ -73,7 +75,7 @@ class Request {
     stream << "*Request Data*\n"
            << "Method: " << method_ << "\n"
            << "Uri:    " << path_ << "\n"
-           << "Ver:    " << version_ << "\n"
+           << "Version:    " << version_ << "\n"
            << "Host:   " << host_ << ":" << port_ << "\n"
            << "Headers:\n";
     for (const auto& [key, value] : headers_) {
@@ -96,6 +98,7 @@ class Request {
   types::camille::CamilleHeaders headers_;
 
   bool has_auth_{false};
+  bool is_partial_{false};
   size_t request_size_{0};
 };
 
