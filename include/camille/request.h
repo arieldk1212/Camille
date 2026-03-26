@@ -2,6 +2,7 @@
 #define CAMILLE_INCLUDE_CAMILLE_REQUEST_H_
 
 #include <optional>
+#include <sstream>
 
 #include "types.h"
 #include "logging.h"
@@ -53,7 +54,6 @@ class Request {
         ++dup;
       }
     }
-
     if (dup == 1) {
       return header_value;
     }
@@ -63,23 +63,28 @@ class Request {
   [[nodiscard]] bool Auth() const { return has_auth_; }
   void SetAuth(bool auth) { has_auth_ = auth; }
 
+  [[nodiscard]] bool IsPartial() const { return is_partial_; }
+  void SetPartial() { is_partial_ = true; }
+
   [[nodiscard]] size_t Size() const { return request_size_; }
   void SetSize(size_t size) { request_size_ = size; }
   void AddSize(size_t size) { request_size_ += size; }
 
   void PrintRequest() const {
-    CAMILLE_DEBUG("Method: {}", method_);
-    CAMILLE_DEBUG("Uri: {}", path_);
-    CAMILLE_DEBUG("Version: {}", version_);
-    CAMILLE_DEBUG("Host: {}", host_);
-    CAMILLE_DEBUG("Port: {}", port_);
+    std::stringstream stream;
+    stream << "*Request Data*\n"
+           << "Method: " << method_ << "\n"
+           << "Uri:    " << path_ << "\n"
+           << "Version:    " << version_ << "\n"
+           << "Host:   " << host_ << ":" << port_ << "\n"
+           << "Headers:\n";
     for (const auto& [key, value] : headers_) {
-      CAMILLE_DEBUG("Header Key: {}", key);
-      CAMILLE_DEBUG("Header Value: {}", value);
+      stream << "  " << key << ": " << value << "\n";
     }
-    CAMILLE_DEBUG("Size: {}", request_size_);
-    CAMILLE_DEBUG("Content-Length: {}", content_length_);
-    CAMILLE_DEBUG("Body: {}", body_);
+    stream << "Size:           " << request_size_ << " bytes\n"
+           << "Content-Length: " << content_length_ << "\n"
+           << "Body:           " << (body_.empty() ? "[empty]" : body_) << "\n";
+    CAMILLE_DEBUG("{}", stream.str());
   }
 
  private:
@@ -89,10 +94,11 @@ class Request {
   std::string body_;
   std::string method_;
   std::string version_;
-  size_t content_length_;
+  size_t content_length_{0};
   types::camille::CamilleHeaders headers_;
 
   bool has_auth_{false};
+  bool is_partial_{false};
   size_t request_size_{0};
 };
 

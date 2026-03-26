@@ -1,19 +1,12 @@
 #ifndef CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 #define CAMILLE_INCLUDE_CAMILLE_NETWORK_H_
 
-#include "asio/basic_streambuf.hpp"
-#include "asio/streambuf.hpp"
-#include "camille/benchmark.h"
-#include "types.h"
 #include "logging.h"
 #include "handler.h"
 
 #include "asio/read_until.hpp"
 #include "asio/read.hpp"
 #include "asio/write.hpp"
-
-#include <cstddef>
-#include <memory>
 
 namespace camille {
 namespace network {
@@ -42,27 +35,32 @@ class Session : public std::enable_shared_from_this<Session> {
           self_request_handler(request_handler) {}
 
     void operator()(const std::error_code& error_code, size_t bytes) {
-      if (!error_code) {
-        asio::streambuf::const_buffers_type buffer = self->stream_buffer_.data();
-
-        std::string_view data(static_cast<const char*>(buffer.data()),
-                              static_cast<std::ptrdiff_t>(bytes));
-
-        // std::string data(
-        //     asio::buffers_begin(buffer),
-        //     std::next(asio::buffers_begin(buffer), static_cast<std::ptrdiff_t>(bytes)));
-
-        {
-          Benchmark here{"Parser Benchmark"};
-          auto request = self_request_handler.Parse(data);
-          request->PrintRequest();
+      if (error_code) {
+        if (error_code == asio::error::eof) {
+          CAMILLE_DEBUG("Session ended");
+        } else {
+          CAMILLE_ERROR("Unexpected Session Error: {}", error_code.message());
         }
-
-        self->stream_buffer_.consume(bytes);
-        self->DoWrite(bytes);
-      } else if (error_code == asio::error::eof) {
-        CAMILLE_WARNING("Session ended");
+        return;
       }
+
+      auto bufs = self->stream_buffer_.data();
+      std::string_view data(static_cast<const char*>(bufs.data()), self->stream_buffer_.size());
+
+      auto result = self_request_handler.Parse(data);
+
+      if (result.has_value() && result->IsPartial()) {
+        auto body_size = result->ContentLength();
+        self->DoReadByBytes(body_size);
+        // auto result = self_request_handler.Parse(data, true);
+      } else if (!result) {
+        CAMILLE_ERROR("Parser Error: {}", static_cast<std::uint8_t>(result.error().second));
+        CAMILLE_ERROR("Parser Error State: {}", static_cast<std::uint8_t>(result.error().first));
+      }
+
+      self_request_handler.PrintRequest();
+      self->stream_buffer_.consume(result->Size());
+      self->DoWrite(result->Size());
     }
 
     types::camille::CamilleShared<Session> self;
@@ -98,8 +96,11 @@ class Session : public std::enable_shared_from_this<Session> {
   void DoRead() {
     asio::async_read_until(*socket_, stream_buffer_, "\r\n\r\n",
                            ReadHandler{shared_from_this(), request_handler_});
-    // asio::async_read(*socket_, stream_buffer_, ReadHandler{shared_from_this(),
-    // request_handler_});
+  }
+
+  void DoReadByBytes(size_t bytes_to_consume) {
+    asio::async_read(*socket_, stream_buffer_, asio::transfer_exactly(bytes_to_consume),
+                     ReadHandler{shared_from_this(), request_handler_});
   }
 
   void DoWrite(std::size_t bytes_to_write) {
@@ -112,7 +113,7 @@ class Session : public std::enable_shared_from_this<Session> {
    */
   void DoWait();
 
-  bool state_{false};
+  bool state_{false};  // i added it to solve the problem of dependency injection with the
   handler::RequestHandler request_handler_;
   handler::ResponseHandler response_handler_;
   types::aio::AsioIOStreamBuffer stream_buffer_;

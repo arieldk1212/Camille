@@ -59,21 +59,24 @@ class Response {
     return std::nullopt;
   }
 
-  [[nodiscard]] size_t Size() const { return response_size; }
-  void SetSize(size_t size) { response_size = size; }
-  void AddSize(size_t size) { response_size += size; }
+  [[nodiscard]] size_t Size() const { return response_size_; }
+  void SetSize(size_t size) { response_size_ = size; }
+  void AddSize(size_t size) { response_size_ += size; }
 
-  void PrintResponse() const {
-    CAMILLE_DEBUG("Method: {}", method_);
-    CAMILLE_DEBUG("Uri: {}", path_);
-    CAMILLE_DEBUG("Version: {}", version_);
-    CAMILLE_DEBUG("Host: {}", host_);
-    CAMILLE_DEBUG("Port: {}", port_);
+  void PrintRequest() const {
+    std::stringstream stream;
+    stream << "Method: " << method_ << "\n"
+           << "Uri:    " << path_ << "\n"
+           << "Ver:    " << version_ << "\n"
+           << "Host:   " << host_ << ":" << port_ << "\n"
+           << "Headers:\n";
     for (const auto& [key, value] : headers_) {
-      CAMILLE_DEBUG("Header Key: {}", key);
-      CAMILLE_DEBUG("Header Value: {}", value);
+      stream << "  " << key << ": " << value << "\n";
     }
-    CAMILLE_DEBUG("Content-Length: {}", content_length_);
+    stream << "Size:           " << response_size_ << " bytes\n"
+           << "Content-Length: " << content_length_ << "\n"
+           << "Body:           " << (body_.empty() ? "[empty]" : body_) << "\n";
+    CAMILLE_DEBUG("{}", stream.str());
   }
 
  private:
@@ -83,10 +86,10 @@ class Response {
   std::string body_;
   std::string method_;
   std::string version_;
-  size_t content_length_;
+  size_t content_length_{0};
   types::camille::CamilleHeaders headers_;
 
-  size_t response_size{0};
+  size_t response_size_{0};
 };
 
 };  // namespace response
